@@ -139,11 +139,23 @@ set_gsa:
 get_gsa:
     add t0, zero, a0
     slli t0, t0, 5
-    la t1, GSA0
-    add t1, t1, t0
-    add a0, zero, t1
 
-    ret
+    la t2, GSA_ID
+    lw t2, 0(t2)
+    bnez t2, gsa_id_1
+
+    gsa_id_0:
+        la t1, GSA0
+        j get_gsa_end
+
+    gsa_id_1:
+        la t1, GSA1
+
+    get_gsa_end:
+        add t1, t1, t0
+        add a0, zero, t1
+
+        ret
 /* END:get_gsa */
 
 /* BEGIN:draw_gsa */
