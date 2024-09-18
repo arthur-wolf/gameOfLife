@@ -70,35 +70,35 @@ clear_leds:
 # t3 : encoded value
 # t4 : new register value
 set_pixel:
-# encode correct column
-addi t0, zero, a0          # t0 = x
-or t4, zero, t0            # t4 = x
+    # encode correct column
+    addi t0, zero, a0          # t0 = x
+    or t4, zero, t0            # t4 = x
 
-# encode correct row
-addi t1, zero, a1          # t1 = y
-slli t1, t0, 4             # t1 = y << 4
-or t4, t4, t1              # t4 = y | x
+    # encode correct row
+    addi t1, zero, a1          # t1 = y
+    slli t1, t0, 4             # t1 = y << 4
+    or t4, t4, t1              # t4 = y | x
 
-# encode correct color
-addi t2, zero, 0x100       # t2 = 0b00000000_00000000_00000001_00000000
-or t4, t4, t2              # t4 = color | y | x
+    # encode correct color
+    addi t2, zero, 0x100       # t2 = 0b00000000_00000000_00000001_00000000
+    or t4, t4, t2              # t4 = color | y | x
 
-# encode correct value
-addi t3, zero, 1           # t3 = 1
-slli t3, t3, 15            # t3 = 2^15
-or t4, t4, t3              # t4 = value | color | y | x
+    # encode correct value
+    addi t3, zero, 1           # t3 = 1
+    slli t3, t3, 15            # t3 = 2^15
+    or t4, t4, t3              # t4 = value | color | y | x
 
-# store new register value
-la t5, LEDS                # load the address of LEDS into t5
-lw t6, 0(t5)               # load the value stored at LEDS into t6
-and t6, t6, t4             # t6 = current LEDS value & value in t4
-sw t6, 0(t5)               # store the result back at the LEDS address
+    # store new register value
+    la t5, LEDS                # load the address of LEDS into t5
+    lw t6, 0(t5)               # load the value stored at LEDS into t6
+    and t6, t6, t4             # t6 = current LEDS value & value in t4
+    sw t6, 0(t5)               # store the result back at the LEDS address
 /* END:set_pixel */
 
 /* BEGIN:wait */
 wait:
     li t0, 1                # t0 = 1
-    slli t0, t0, 19         # t0 = 2^19 */
+    slli t0, t0, 10         # t0 = 2^10
 
     la t1, SPEED
     lw t1, 0(t1)            # t1 = SPEED */
@@ -133,8 +133,8 @@ change_speed:
 
 change_speed_decrement:
     
-
 change_speed_increment:
+
 change_speed_end:
     ret
 /* BEGIN:pause_game */
