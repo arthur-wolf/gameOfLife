@@ -58,6 +58,11 @@ main:
   call set_pixel
   nop
 
+  add a0, zero, 2
+  add a1, zero, 2
+  call set_pixel
+  nop
+
   call clear_leds
   nop
   
@@ -103,7 +108,7 @@ set_pixel:
     # store new register value
     la t5, LEDS                # load the address of LEDS into t5
     lw t6, 0(t5)               # load the value stored at LEDS into t6
-    or t6, t6, t4             # t6 = current LEDS value & value in t4
+    or t6, t6, t4              # t6 = current LEDS value & value in t4
     sw t6, 0(t5)               # store the result back at the LEDS address
 
     ret
@@ -130,7 +135,15 @@ set_gsa:
 /* END:set_gsa */
 
 /* BEGIN:get_gsa */
+# a0 : line y-coordinate
 get_gsa:
+    add t0, zero, a0
+    slli t0, t0, 5
+    la t1, GSA0
+    add t1, t1, t0
+    add a0, zero, t1
+
+    ret
 /* END:get_gsa */
 
 /* BEGIN:draw_gsa */
