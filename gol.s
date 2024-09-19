@@ -131,29 +131,55 @@ wait_end:
 /* END:wait */
 
 /* BEGIN:set_gsa */
+# a0 : the gsa element to be transferred
+# a1 : the line y-coordinate
 set_gsa:
+    la t0, GSA_ID           # t0 = GSA_ID address
+    lw t0, 0(t0)            # t0 = GSA_ID
+
+    bnez t0, set_gsa_id_1   # if GSA_ID != 0, go to set_gsa_id_1
+
+    set_gsa_id_0:
+        la t1, GSA0         # t1 = GSA0 address
+        j set_gsa_transfer
+
+    set_gsa_id_1:
+        la t1, GSA1         # t1 = GSA1 address
+
+    set_gsa_transfer:
+        # Offset to the correct line of the GSA
+        mv t2, a1           # t2 = a1
+        slli t2, t2, 5      # t2 = a1 << 5
+        add t1, t1, t2      # t1 = t1 + t2
+        
+        # Store the value in the GSA
+        mv t2, a0           # t2 = a0
+        sw t2, 0(t1)        # store t2 in t1
+
+    set_gsa_end:
+        ret
 /* END:set_gsa */
 
 /* BEGIN:get_gsa */
 # a0 : line y-coordinate
 get_gsa:
-    add t0, zero, a0
+    mv t0, a0
     slli t0, t0, 5
 
     la t2, GSA_ID
     lw t2, 0(t2)
-    bnez t2, gsa_id_1
+    bnez t2, get_gsa_id_1
 
-    gsa_id_0:
+    get_gsa_id_0:
         la t1, GSA0
         j get_gsa_end
 
-    gsa_id_1:
+    get_gsa_id_1:
         la t1, GSA1
 
     get_gsa_end:
         add t1, t1, t0
-        add a0, zero, t1
+        mv a0, t1
 
         ret
 /* END:get_gsa */
