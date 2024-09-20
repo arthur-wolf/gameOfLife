@@ -92,7 +92,7 @@ set_pixel:
     or t4, zero, t0           # t4 = x
 
     # encode correct row
-    li t1, a1          # t1 = y
+    mv t1, a1          # t1 = y
     slli t1, t0, 4            # t1 = y << 4
     or t4, t4, t1             # t4 = y | x
 
