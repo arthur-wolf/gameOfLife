@@ -71,7 +71,7 @@ main:
 /* BEGIN:clear_leds */
 clear_leds:
   # red leds
-    add t0, zero, 0x01FF   # select all leds and turn them off
+    li t0, 0x01FF           # select all leds and turn them off
     la t1, LEDS             # load leds address
     sw t0, 0(t1)            # store t0 in leds
     
@@ -88,22 +88,22 @@ clear_leds:
 # t4 : new register value
 set_pixel:
     # encode correct column
-    add t0, zero, a0          # t0 = x
-    or t4, zero, t0            # t4 = x
+    mv t0, a0                 # t0 = x
+    or t4, zero, t0           # t4 = x
 
     # encode correct row
-    add t1, zero, a1          # t1 = y
-    slli t1, t0, 4             # t1 = y << 4
-    or t4, t4, t1              # t4 = y | x
+    li t1, a1          # t1 = y
+    slli t1, t0, 4            # t1 = y << 4
+    or t4, t4, t1             # t4 = y | x
 
     # encode correct color
-    add t2, zero, 0x100       # t2 = 0b00000000_00000000_00000001_00000000
-    or t4, t4, t2              # t4 = color | y | x
+    li t2, RED                # t2 = 0b00000000_00000000_00000001_00000000
+    or t4, t4, t2             # t4 = color | y | x
 
     # encode correct value
-    add t3, zero, 1           # t3 = 1
-    slli t3, t3, 16            # t3 = 2^16
-    or t4, t4, t3              # t4 = value | color | y | x
+    li t3, 1                  # t3 = 1
+    slli t3, t3, 16           # t3 = 2^16
+    or t4, t4, t3             # t4 = value | color | y | x
 
     # store new register value
     la t5, LEDS                # load the address of LEDS into t5
