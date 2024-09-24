@@ -53,17 +53,27 @@ main:
   li sp, CUSTOM_VAR_END /* Set stack pointer, grows downwards */ 
   # call reset_game
 
-  add a0, zero, 1
-  add a1, zero, 1
+  addi a0, zero, 1
+  addi a1, zero, 2
   call set_pixel
   nop
 
-  add a0, zero, 2
-  add a1, zero, 2
+  addi a0, zero, 2
+  addi a1, zero, 1
   call set_pixel
   nop
 
-  call clear_leds
+  addi a0, zero, 3
+  addi a1, zero, 3
+  call set_pixel
+  nop
+
+  addi a0, zero, 5
+  addi a1, zero, 5
+  call set_pixel
+  nop
+
+  call draw_gsa
   nop
   
   j main
@@ -93,7 +103,7 @@ set_pixel:
 
     # encode correct row
     mv t1, a1          # t1 = y
-    slli t1, t0, 4            # t1 = y << 4
+    slli t1, t1, 4            # t1 = y << 4
     or t4, t4, t1             # t4 = y | x
 
     # encode correct color
@@ -107,9 +117,7 @@ set_pixel:
 
     # store new register value
     la t5, LEDS                # load the address of LEDS into t5
-    lw t6, 0(t5)               # load the value stored at LEDS into t6
-    or t6, t6, t4              # t6 = current LEDS value & value in t4
-    sw t6, 0(t5)               # store the result back at the LEDS address
+    sw t4, 0(t5)               # store the result back at the LEDS address
 
     ret
 /* END:set_pixel */
@@ -186,6 +194,36 @@ get_gsa:
 
 /* BEGIN:draw_gsa */
 draw_gsa:
+    addi sp, sp, -4
+    sw ra, 0(sp)
+
+    li t0, 0                # t0 = gsa cell pointer
+    li t1, N_GSA_COLUMNS    
+    li t2, N_GSA_LINES
+
+    # Get current GSA
+    la t3, GSA_ID
+    lw t3, 0(t3)
+    bnez t3, draw_gsa_id_1
+
+    draw_gsa_id_0:
+        la t3, GSA0
+        j draw_gsa_next
+
+    draw_gsa_id_1:
+        la t3, GSA1
+
+    # Draw the GSA on the screen
+    draw_gsa_next:
+    
+
+    
+
+    draw_gsa_end:
+        lw ra, 0(sp)
+        addi sp, sp, 4
+
+        ret
 /* END:draw_gsa */
 
 /* BEGIN:random_gsa */
