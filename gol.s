@@ -163,7 +163,8 @@ set_gsa:
         slli s1, s1, 2      # s2 = a1 * 4 (4 bytes per line, so *4 to skip to the correct line)
         
         # Store the value in the GSA
-        sw a0, s1(s0)        # store s2 in s1
+        add s0, s0, s1      # s0 = s0 + s1
+        sw a0, 0(s0)        # store s2 in s1
 
     set_gsa_end:
         lw ra, 0(sp)
@@ -193,13 +194,14 @@ get_gsa:
     get_gsa_id_1:
         la s0, GSA1
 
-    get_gsa_trasnfer:
+    get_gsa_transfer:
         # Offset to the correct line of the GSA
         mv s1, a0
         slli s1, s1, 2
 
         # Load the value from the GSA
-        lw a0, s1(s0)
+        add s0, s0, s1
+        lw a0, 0(s0)
 
     get_gsa_end:
         # Stack stuff
