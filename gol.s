@@ -80,11 +80,21 @@ main:
 
 /* BEGIN:clear_leds */
 clear_leds:
+    addi sp, sp, -12
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+
   # red leds
     li s0, 0x01FF           # select all leds and turn them off
     la s1, LEDS             # load leds address
     sw s0, 0(s1)            # store s0 in leds
     
+    lw s1, 8(sp)
+    lw s0, 4(sp)
+    lw ra, 0(sp)
+    addi sp, sp, 12
+
     ret
 /* END:clear_leds */
 
@@ -97,6 +107,15 @@ clear_leds:
 # s3 : encoded value
 # s4 : new register value
 set_pixel:
+    addi sp, sp, -28
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
+    sw s3, 16(sp)
+    sw s4, 20(sp)
+    sw s5, 24(sp)
+
     # encode correct column
     mv s0, a0                 # s0 = x
     or s4, zero, s0           # s4 = x
@@ -119,11 +138,25 @@ set_pixel:
     la s5, LEDS                # load the address of LEDS into s5
     sw s4, 0(s5)               # store the result back at the LEDS address
 
+    lw s5, 24(sp)
+    lw s4, 20(sp)
+    lw s3, 16(sp)
+    lw s2, 12(sp)
+    lw s1, 8(sp)
+    lw s0, 4(sp)
+    lw ra, 0(sp)
+    addi sp, sp, 28
+
     ret
 /* END:set_pixel */
 
 /* BEGIN:wait */
 wait:
+    addi sp, sp, -12
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+
     li s0, 1                # s0 = 1
     slli s0, s0, 10         # s0 = 2^10
 
@@ -135,6 +168,10 @@ wait_loop:
     bgtz s0, wait_loop      # if s0 > 0, go to wait_loop
 
 wait_end:
+    lw s1, 8(sp)
+    lw s0, 4(sp)
+    lw ra, 0(sp)
+
     ret
 /* END:wait */
 
@@ -177,8 +214,10 @@ set_gsa:
 # a0 : line y-coordinate
 get_gsa:
     # Stack stuff
-    addi sp, sp, -4
+    addi sp, sp, -12
     sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
 
     # Load the GSA ID
     la s0, GSA_ID
@@ -205,16 +244,21 @@ get_gsa:
 
     get_gsa_end:
         # Stack stuff
+        lw s1, 8(sp)
+        lw s0, 4(sp)
         lw ra, 0(sp)
-        addi sp, sp, 4
+        addi sp, sp, 12
 
         ret
 /* END:get_gsa */
 
 /* BEGIN:draw_gsa */
 draw_gsa:
-    addi sp, sp, -4
+    addi sp, sp, -16
     sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
 
     li s0, 0                # s0 is the line index
 
@@ -251,13 +295,25 @@ draw_gsa:
 
     draw_gsa_end:
         lw ra, 0(sp)
-        addi sp, sp, 4
+        lw s0, 4(sp)
+        lw s1, 8(sp)
+        lw s2, 12(sp)
+        addi sp, sp, 16
 
         ret
 /* END:draw_gsa */
 
 /* BEGIN:random_gsa */
 random_gsa:
+    addi sp, sp, -28
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
+    sw s3, 16(sp)
+    sw s4, 20(sp)
+    sw s5, 24(sp)
+
     la s5, RANDOM      # s5 is the random number generator address
 
     la s0, GSA_ID
@@ -280,8 +336,31 @@ random_gsa:
         li s4, N_GSA_COLUMNS    # s4 is the number of columns
 
         random_gsa_line_loop:
+            li s5, 0            # s5 is the value that will be stored in the GSA
+
+            lw s6, 0(s5)        # s6 is the random number
+            andi s6, s6, 1      # s6 = s6 & 1
+
+            sll s6, s6, s3
+            or s5, s5, s6
+
+            mv a0, s5           # a0 is the value to be stored in the GSA
+            mv a1, s1           # a1 is the line index
+            call set_gsa        # set the GSA value
+
+            addi s3, s3, 1      # s3 = s3 + 1
+            blt s3, s4, random_gsa_column_loop # if s3 < s4, loop
 
     random_gsa_end:
+        lw s5, 24(sp)
+        lw s4, 20(sp)
+        lw s3, 16(sp)
+        lw s2, 12(sp)
+        lw s1, 8(sp)
+        lw s0, 4(sp)
+        lw ra, 0(sp)
+        addi sp, sp, 28
+
         ret
 /* END:random_gsa */
 
