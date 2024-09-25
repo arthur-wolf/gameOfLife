@@ -142,52 +142,69 @@ wait_end:
 # a0 : the gsa element to be transferred
 # a1 : the line y-coordinate
 set_gsa:
+    addi sp, sp, -4
+    sw ra, 0(sp)
+
     la t0, GSA_ID           # t0 = GSA_ID address
     lw t0, 0(t0)            # t0 = GSA_ID
 
     bnez t0, set_gsa_id_1   # if GSA_ID != 0, go to set_gsa_id_1
 
     set_gsa_id_0:
-        la t1, GSA0         # t1 = GSA0 address
+        la t0, GSA0         # t0 = GSA0 address
         j set_gsa_transfer
 
     set_gsa_id_1:
-        la t1, GSA1         # t1 = GSA1 address
+        la t0, GSA1         # t0 = GSA1 address
 
     set_gsa_transfer:
         # Offset to the correct line of the GSA
-        mv t2, a1           # t2 = a1
-        slli t2, t2, 5      # t2 = a1 << 5
-        add t1, t1, t2      # t1 = t1 + t2
+        mv t1, a1           # t2 = a1
+        slli t1, t1, 2      # t2 = a1 * 4 (4 bytes per line, so *4 to skip to the correct line)
         
         # Store the value in the GSA
-        mv t2, a0           # t2 = a0
-        sw t2, 0(t1)        # store t2 in t1
+        sw a0, t1(t0)        # store t2 in t1
 
     set_gsa_end:
+        lw ra, 0(sp)
+        addi sp, sp, 4
+
         ret
 /* END:set_gsa */
 
 /* BEGIN:get_gsa */
 # a0 : line y-coordinate
 get_gsa:
-    mv t0, a0
-    slli t0, t0, 5
+    # Stack stuff
+    addi sp, sp, -4
+    sw ra, 0(sp)
 
-    la t2, GSA_ID
-    lw t2, 0(t2)
-    bnez t2, get_gsa_id_1
+    # Load the GSA ID
+    la t0, GSA_ID
+    lw t0, 0(t2)
+
+    # Check which GSA to get the line from
+    bnez t0, get_gsa_id_1
 
     get_gsa_id_0:
-        la t1, GSA0
-        j get_gsa_end
+        la t0, GSA0
+        j get_gsa_transfer
 
     get_gsa_id_1:
-        la t1, GSA1
+        la t0, GSA1
+
+    get_gsa_trasnfer:
+        # Offset to the correct line of the GSA
+        mv t1, a0
+        slli t1, t1, 2
+
+        # Load the value from the GSA
+        lw a0, t1(t0)
 
     get_gsa_end:
-        add t1, t1, t0
-        mv a0, t1
+        # Stack stuff
+        lw ra, 0(sp)
+        addi sp, sp, 4
 
         ret
 /* END:get_gsa */
@@ -197,27 +214,38 @@ draw_gsa:
     addi sp, sp, -4
     sw ra, 0(sp)
 
-    li t0, 0                # t0 = gsa cell pointer
-    li t1, N_GSA_COLUMNS    
-    li t2, N_GSA_LINES
+    li t0, 0                # t0 is the line index
 
-    # Get current GSA
-    la t3, GSA_ID
-    lw t3, 0(t3)
-    bnez t3, draw_gsa_id_1
+    draw_gsa_line_loop:
+        mv a0, t0           # a0 is the line index
+        call get_gsa        # a0 is the line value
 
-    draw_gsa_id_0:
-        la t3, GSA0
-        j draw_gsa_next
+    draw_gsa_draw_line:
+        # Load the LEDS value
+        mv t1, a0       # t1 will contain the LEDS value
+        slli t1, t1, 16 # t1 = a0 << 16
 
-    draw_gsa_id_1:
-        la t3, GSA1
+        # Load the row value
+        mv t2, t0       # t2 will contain the y-coordinate
+        slli t2, t2, 4  # t2 = t0 << 4
+        or t1, t1, t2   # t1 = t1 | t2
 
-    # Draw the GSA on the screen
-    draw_gsa_next:
-    
+        # Load the column value
+        li t2, ALL      # t2 = 0b00000000_00000000_00000000_00001111
+        or t1, t1, t2   # t1 = t1 | t2
 
-    
+        # Load the LEDS color value
+        li t2, RED      # t2 = 0b00000000_00000000_00000001_00000000
+        or t1, t1, t2   # t1 = t1 | t2
+
+        # Store the LEDS value
+        la t2, LEDS     # t2 is the LEDS address
+        sw t1, 0(t2)    # store t1 in t2
+        
+        # Increment the line index
+        la t2, N_GSA_LINES
+        addi t0, t0, 1  # t0 = t0 + 1
+        blt t0, t2, draw_gsa_line_loop # if t0 < N_GSA_LINES, go to draw_gsa_line_loop
 
     draw_gsa_end:
         lw ra, 0(sp)
@@ -227,7 +255,30 @@ draw_gsa:
 /* END:draw_gsa */
 
 /* BEGIN:random_gsa */
-random_gsa:           
+random_gsa:
+    la t5, RANDOM      # t5 is the random number generator address
+
+    la t0, GSA_ID
+    lw t0, 0(t0)
+
+    bnez t0, random_gsa_id_1
+
+    random_gsa_id_0:
+        la t0, GSA0
+        j random_gsa_next
+
+    random_gsa_id_1:
+        la t0, GSA1
+
+    random_gsa_next:
+        li t1, 0                # t1 is the line index
+        li t2, N_GSA_LINES      # t2 is the number of lines
+        
+        random_gsa_line_loop:
+            # ...
+
+    random_gsa_end:
+        ret
 /* END:random_gsa */
 
 /* BEGIN:change_speed */
