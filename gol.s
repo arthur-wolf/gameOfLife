@@ -81,9 +81,9 @@ main:
 /* BEGIN:clear_leds */
 clear_leds:
   # red leds
-    li t0, 0x01FF           # select all leds and turn them off
-    la t1, LEDS             # load leds address
-    sw t0, 0(t1)            # store t0 in leds
+    li s0, 0x01FF           # select all leds and turn them off
+    la s1, LEDS             # load leds address
+    sw s0, 0(s1)            # store s0 in leds
     
     ret
 /* END:clear_leds */
@@ -91,48 +91,48 @@ clear_leds:
 /* BEGIN:set_pixel */
 # a0 : x-coordinate
 # a1 : y-coordinate
-# t0 : encoded column
-# t1 : encoded row
-# t2 : encoded color
-# t3 : encoded value
-# t4 : new register value
+# s0 : encoded column
+# s1 : encoded row
+# s2 : encoded color
+# s3 : encoded value
+# s4 : new register value
 set_pixel:
     # encode correct column
-    mv t0, a0                 # t0 = x
-    or t4, zero, t0           # t4 = x
+    mv s0, a0                 # s0 = x
+    or s4, zero, s0           # s4 = x
 
     # encode correct row
-    mv t1, a1          # t1 = y
-    slli t1, t1, 4            # t1 = y << 4
-    or t4, t4, t1             # t4 = y | x
+    mv s1, a1          # s1 = y
+    slli s1, s1, 4            # s1 = y << 4
+    or s4, s4, s1             # s4 = y | x
 
     # encode correct color
-    li t2, RED                # t2 = 0b00000000_00000000_00000001_00000000
-    or t4, t4, t2             # t4 = color | y | x
+    li s2, RED                # s2 = 0b00000000_00000000_00000001_00000000
+    or s4, s4, s2             # s4 = color | y | x
 
     # encode correct value
-    li t3, 1                  # t3 = 1
-    slli t3, t3, 16           # t3 = 2^16
-    or t4, t4, t3             # t4 = value | color | y | x
+    li s3, 1                  # s3 = 1
+    slli s3, s3, 16           # s3 = 2^16
+    or s4, s4, s3             # s4 = value | color | y | x
 
     # store new register value
-    la t5, LEDS                # load the address of LEDS into t5
-    sw t4, 0(t5)               # store the result back at the LEDS address
+    la s5, LEDS                # load the address of LEDS into s5
+    sw s4, 0(s5)               # store the result back at the LEDS address
 
     ret
 /* END:set_pixel */
 
 /* BEGIN:wait */
 wait:
-    li t0, 1                # t0 = 1
-    slli t0, t0, 10         # t0 = 2^10
+    li s0, 1                # s0 = 1
+    slli s0, s0, 10         # s0 = 2^10
 
-    la t1, SPEED
-    lw t1, 0(t1)            # t1 = SPEED */
+    la s1, SPEED
+    lw s1, 0(s1)            # s1 = SPEED */
 
 wait_loop:
-    sub t0, t0, t1          # t0 = t0 - t1
-    bgtz t0, wait_loop      # if t0 > 0, go to wait_loop
+    sub s0, s0, s1          # s0 = s0 - s1
+    bgtz s0, wait_loop      # if s0 > 0, go to wait_loop
 
 wait_end:
     ret
@@ -145,25 +145,25 @@ set_gsa:
     addi sp, sp, -4
     sw ra, 0(sp)
 
-    la t0, GSA_ID           # t0 = GSA_ID address
-    lw t0, 0(t0)            # t0 = GSA_ID
+    la s0, GSA_ID           # s0 = GSA_ID address
+    lw s0, 0(s0)            # s0 = GSA_ID
 
-    bnez t0, set_gsa_id_1   # if GSA_ID != 0, go to set_gsa_id_1
+    bnez s0, set_gsa_id_1   # if GSA_ID != 0, go to set_gsa_id_1
 
     set_gsa_id_0:
-        la t0, GSA0         # t0 = GSA0 address
+        la s0, GSA0         # s0 = GSA0 address
         j set_gsa_transfer
 
     set_gsa_id_1:
-        la t0, GSA1         # t0 = GSA1 address
+        la s0, GSA1         # s0 = GSA1 address
 
     set_gsa_transfer:
         # Offset to the correct line of the GSA
-        mv t1, a1           # t2 = a1
-        slli t1, t1, 2      # t2 = a1 * 4 (4 bytes per line, so *4 to skip to the correct line)
+        mv s1, a1           # s2 = a1
+        slli s1, s1, 2      # s2 = a1 * 4 (4 bytes per line, so *4 to skip to the correct line)
         
         # Store the value in the GSA
-        sw a0, t1(t0)        # store t2 in t1
+        sw a0, s1(s0)        # store s2 in s1
 
     set_gsa_end:
         lw ra, 0(sp)
@@ -180,26 +180,26 @@ get_gsa:
     sw ra, 0(sp)
 
     # Load the GSA ID
-    la t0, GSA_ID
-    lw t0, 0(t2)
+    la s0, GSA_ID
+    lw s0, 0(s2)
 
     # Check which GSA to get the line from
-    bnez t0, get_gsa_id_1
+    bnez s0, get_gsa_id_1
 
     get_gsa_id_0:
-        la t0, GSA0
+        la s0, GSA0
         j get_gsa_transfer
 
     get_gsa_id_1:
-        la t0, GSA1
+        la s0, GSA1
 
     get_gsa_trasnfer:
         # Offset to the correct line of the GSA
-        mv t1, a0
-        slli t1, t1, 2
+        mv s1, a0
+        slli s1, s1, 2
 
         # Load the value from the GSA
-        lw a0, t1(t0)
+        lw a0, s1(s0)
 
     get_gsa_end:
         # Stack stuff
@@ -214,38 +214,38 @@ draw_gsa:
     addi sp, sp, -4
     sw ra, 0(sp)
 
-    li t0, 0                # t0 is the line index
+    li s0, 0                # s0 is the line index
 
     draw_gsa_line_loop:
-        mv a0, t0           # a0 is the line index
+        mv a0, s0           # a0 is the line index
         call get_gsa        # a0 is the line value
 
     draw_gsa_draw_line:
         # Load the LEDS value
-        mv t1, a0       # t1 will contain the LEDS value
-        slli t1, t1, 16 # t1 = a0 << 16
+        mv s1, a0       # s1 will contain the LEDS value
+        slli s1, s1, 16 # s1 = a0 << 16
 
         # Load the row value
-        mv t2, t0       # t2 will contain the y-coordinate
-        slli t2, t2, 4  # t2 = t0 << 4
-        or t1, t1, t2   # t1 = t1 | t2
+        mv s2, s0       # s2 will contain the y-coordinate
+        slli s2, s2, 4  # s2 = s0 << 4
+        or s1, s1, s2   # s1 = s1 | s2
 
         # Load the column value
-        li t2, ALL      # t2 = 0b00000000_00000000_00000000_00001111
-        or t1, t1, t2   # t1 = t1 | t2
+        li s2, ALL      # s2 = 0b00000000_00000000_00000000_00001111
+        or s1, s1, s2   # s1 = s1 | s2
 
         # Load the LEDS color value
-        li t2, RED      # t2 = 0b00000000_00000000_00000001_00000000
-        or t1, t1, t2   # t1 = t1 | t2
+        li s2, RED      # s2 = 0b00000000_00000000_00000001_00000000
+        or s1, s1, s2   # s1 = s1 | s2
 
         # Store the LEDS value
-        la t2, LEDS     # t2 is the LEDS address
-        sw t1, 0(t2)    # store t1 in t2
+        la s2, LEDS     # s2 is the LEDS address
+        sw s1, 0(s2)    # store s1 in s2
         
         # Increment the line index
-        la t2, N_GSA_LINES
-        addi t0, t0, 1  # t0 = t0 + 1
-        blt t0, t2, draw_gsa_line_loop # if t0 < N_GSA_LINES, go to draw_gsa_line_loop
+        la s2, N_GSA_LINES
+        addi s0, s0, 1  # s0 = s0 + 1
+        blt s0, s2, draw_gsa_line_loop # if s0 < N_GSA_LINES, go to draw_gsa_line_loop
 
     draw_gsa_end:
         lw ra, 0(sp)
@@ -256,26 +256,28 @@ draw_gsa:
 
 /* BEGIN:random_gsa */
 random_gsa:
-    la t5, RANDOM      # t5 is the random number generator address
+    la s5, RANDOM      # s5 is the random number generator address
 
-    la t0, GSA_ID
-    lw t0, 0(t0)
+    la s0, GSA_ID
+    lw s0, 0(s0)
 
-    bnez t0, random_gsa_id_1
+    bnez s0, random_gsa_id_1
 
     random_gsa_id_0:
-        la t0, GSA0
+        la s0, GSA0
         j random_gsa_next
 
     random_gsa_id_1:
-        la t0, GSA1
+        la s0, GSA1
 
     random_gsa_next:
-        li t1, 0                # t1 is the line index
-        li t2, N_GSA_LINES      # t2 is the number of lines
+        li s1, 0                # s1 is the line index
+        li s2, N_GSA_LINES      # s2 is the number of lines
         
+        li s3, 0                # s3 is the column index
+        li s4, N_GSA_COLUMNS    # s4 is the number of columns
+
         random_gsa_line_loop:
-            # ...
 
     random_gsa_end:
         ret
