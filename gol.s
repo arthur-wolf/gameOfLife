@@ -338,7 +338,7 @@ random_gsa:
 
     random_gsa_column_loop:
         # Get a random 32-bit value
-        la t0, RANDOM_NUM       # Load random number address
+        la t0, RANDOM           # Load random number address
         lw t3, 0(t0)            # Load random number into t3
 
         # Generate either 0 or 1 using modulo 2

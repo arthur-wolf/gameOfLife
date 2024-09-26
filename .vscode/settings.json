@@ -1,0 +1,6 @@
+{
+    "memory-view.showMemoryPanel": true,
+    "memory-view.trackDebuggers": [
+        "cs200"
+    ]
+}
