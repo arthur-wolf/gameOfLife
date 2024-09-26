@@ -53,24 +53,7 @@ main:
   li sp, CUSTOM_VAR_END /* Set stack pointer, grows downwards */ 
   # call reset_game
 
-  addi a0, zero, 1
-  addi a1, zero, 2
-  call set_pixel
-  nop
-
-  addi a0, zero, 2
-  addi a1, zero, 1
-  call set_pixel
-  nop
-
-  addi a0, zero, 3
-  addi a1, zero, 3
-  call set_pixel
-  nop
-
-  addi a0, zero, 5
-  addi a1, zero, 5
-  call set_pixel
+  call random_gsa
   nop
 
   call draw_gsa
@@ -179,41 +162,7 @@ wait_end:
 # a0 : the gsa element to be transferred
 # a1 : the line y-coordinate
 set_gsa:
-    addi sp, sp, -4
-    sw ra, 0(sp)
-
-    la s0, GSA_ID           # s0 = GSA_ID address
-    lw s0, 0(s0)            # s0 = GSA_ID
-
-    bnez s0, set_gsa_id_1   # if GSA_ID != 0, go to set_gsa_id_1
-
-    set_gsa_id_0:
-        la s0, GSA0         # s0 = GSA0 address
-        j set_gsa_transfer
-
-    set_gsa_id_1:
-        la s0, GSA1         # s0 = GSA1 address
-
-    set_gsa_transfer:
-        # Offset to the correct line of the GSA
-        mv s1, a1           # s2 = a1
-        slli s1, s1, 2      # s2 = a1 * 4 (4 bytes per line, so *4 to skip to the correct line)
-        
-        # Store the value in the GSA
-        add s0, s0, s1      # s0 = s0 + s1
-        sw a0, 0(s0)        # store s2 in s1
-
-    set_gsa_end:
-        lw ra, 0(sp)
-        addi sp, sp, 4
-
-        ret
-/* END:set_gsa */
-
-/* BEGIN:get_gsa */
-# a0 : line y-coordinate
-get_gsa:
-    # Stack stuff
+    # Stack
     addi sp, sp, -12
     sw ra, 0(sp)
     sw s0, 4(sp)
@@ -221,7 +170,50 @@ get_gsa:
 
     # Load the GSA ID
     la s0, GSA_ID
-    lw s0, 0(s2)
+    lw s0, 0(s0)
+
+    # Check which GSA to set the line to
+    bnez s0, set_gsa_id_1
+
+    set_gsa_id_0:
+        la s0, GSA0
+        j set_gsa_transfer
+
+    set_gsa_id_1:
+        la s0, GSA1
+
+    set_gsa_transfer:
+        # Calculate the line offset (1 line is 4 bytes)
+        mv s1, a1
+        slli s1, s1, 2
+
+        # Calculate the GSA address
+        add s0, s0, s1
+
+        # Store the GSA element
+        sw a0, 0(s0)
+
+    # Stack
+    lw s1, 8(sp)
+    lw s0, 4(sp)
+    lw ra, 0(sp)
+    addi sp, sp, 12
+
+    ret
+/* END:set_gsa */
+
+/* BEGIN:get_gsa */
+# a0 : line y-coordinate
+get_gsa:
+    # Stack
+    addi sp, sp, -12
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+
+    # Load the GSA ID
+    la s0, GSA_ID
+    lw s0, 0(s0)
 
     # Check which GSA to get the line from
     bnez s0, get_gsa_id_1
@@ -234,134 +226,156 @@ get_gsa:
         la s0, GSA1
 
     get_gsa_transfer:
-        # Offset to the correct line of the GSA
+        # Calculate the line offset (1 line is 4 bytes)
         mv s1, a0
         slli s1, s1, 2
 
-        # Load the value from the GSA
+        # Calculate the GSA address
         add s0, s0, s1
+
+        # Load the GSA element
         lw a0, 0(s0)
 
-    get_gsa_end:
-        # Stack stuff
-        lw s1, 8(sp)
-        lw s0, 4(sp)
-        lw ra, 0(sp)
-        addi sp, sp, 12
+    # Stack
+    lw s1, 8(sp)
+    lw s0, 4(sp)
+    lw ra, 0(sp)
+    addi sp, sp, 12
 
-        ret
+    ret
 /* END:get_gsa */
 
 /* BEGIN:draw_gsa */
 draw_gsa:
-    addi sp, sp, -16
-    sw ra, 0(sp)
-    sw s0, 4(sp)
-    sw s1, 8(sp)
-    sw s2, 12(sp)
-
-    li s0, 0                # s0 is the line index
-
-    draw_gsa_line_loop:
-        mv a0, s0           # a0 is the line index
-        call get_gsa        # a0 is the line value
-
-    draw_gsa_draw_line:
-        # Load the LEDS value
-        mv s1, a0       # s1 will contain the LEDS value
-        slli s1, s1, 16 # s1 = a0 << 16
-
-        # Load the row value
-        mv s2, s0       # s2 will contain the y-coordinate
-        slli s2, s2, 4  # s2 = s0 << 4
-        or s1, s1, s2   # s1 = s1 | s2
-
-        # Load the column value
-        li s2, ALL      # s2 = 0b00000000_00000000_00000000_00001111
-        or s1, s1, s2   # s1 = s1 | s2
-
-        # Load the LEDS color value
-        li s2, RED      # s2 = 0b00000000_00000000_00000001_00000000
-        or s1, s1, s2   # s1 = s1 | s2
-
-        # Store the LEDS value
-        la s2, LEDS     # s2 is the LEDS address
-        sw s1, 0(s2)    # store s1 in s2
-        
-        # Increment the line index
-        la s2, N_GSA_LINES
-        addi s0, s0, 1  # s0 = s0 + 1
-        blt s0, s2, draw_gsa_line_loop # if s0 < N_GSA_LINES, go to draw_gsa_line_loop
-
-    draw_gsa_end:
-        lw ra, 0(sp)
-        lw s0, 4(sp)
-        lw s1, 8(sp)
-        lw s2, 12(sp)
-        addi sp, sp, 16
-
-        ret
-/* END:draw_gsa */
-
-/* BEGIN:random_gsa */
-random_gsa:
-    addi sp, sp, -28
+    addi sp, sp, -24
     sw ra, 0(sp)
     sw s0, 4(sp)
     sw s1, 8(sp)
     sw s2, 12(sp)
     sw s3, 16(sp)
     sw s4, 20(sp)
-    sw s5, 24(sp)
 
-    la s5, RANDOM      # s5 is the random number generator address
-
+    # Load the GSA ID
     la s0, GSA_ID
     lw s0, 0(s0)
 
-    bnez s0, random_gsa_id_1
+    # Check which GSA to get the line from
+    bnez s0, draw_gsa_id_1
 
-    random_gsa_id_0:
+    draw_gsa_id_0:
         la s0, GSA0
-        j random_gsa_next
+        j draw_gsa_draw
 
-    random_gsa_id_1:
+    draw_gsa_id_1:
         la s0, GSA1
 
-    random_gsa_next:
+    draw_gsa_draw:
         li s1, 0                # s1 is the line index
         li s2, N_GSA_LINES      # s2 is the number of lines
         
-        li s3, 0                # s3 is the column index
-        li s4, N_GSA_COLUMNS    # s4 is the number of columns
+        draw_gsa_line_loop:
+            mv a0, s1           # get the current line index
+            call get_gsa        # get the current GSA line
 
-        random_gsa_line_loop:
-            li s5, 0            # s5 is the value that will be stored in the GSA
+            mv s3, a0           # s3 is the current GSA line
+            slli s3, s3, 16     # s3 = s3 << 16
 
-            lw s6, 0(s5)        # s6 is the random number
-            andi s6, s6, 1      # s6 = s6 & 1
+            mv s4, s1           # s4 is the current line index
+            slli s4, s4, 4      # s4 = s4 << 4
+            or s3, s3, s4       # s3 = s3 | s4
 
-            sll s6, s6, s3
-            or s5, s5, s6
+            li s4, ALL          # s4 is the column mask
+            or s3, s3, s4       # s3 = s3 | s4
 
-            mv a0, s5           # a0 is the value to be stored in the GSA
-            mv a1, s1           # a1 is the line index
-            call set_gsa        # set the GSA value
+            li s4, RED          # s4 is the LED color
+            or s3, s3, s4       # s3 = s3 | s4
 
-            addi s3, s3, 1      # s3 = s3 + 1
-            blt s3, s4, random_gsa_column_loop # if s3 < s4, loop
+            la s4, LEDS         # s4 is the LED address
+            sw s3, 0(s4)        # set the LED value for this line
 
-    random_gsa_end:
-        lw s5, 24(sp)
-        lw s4, 20(sp)
-        lw s3, 16(sp)
-        lw s2, 12(sp)
-        lw s1, 8(sp)
-        lw s0, 4(sp)
-        lw ra, 0(sp)
-        addi sp, sp, 28
+            addi s1, s1, 1                      # increment the line index
+            blt s1, s2, draw_gsa_line_loop       # if s1 < s2, loop
 
-        ret
+    lw s4, 20(sp)
+    lw s3, 16(sp)
+    lw s2, 12(sp)
+    lw s1, 8(sp)
+    lw s0, 4(sp)
+    lw ra, 0(sp)
+    addi sp, sp, 24
+
+    ret
+/* END:draw_gsa */
+
+/* BEGIN:random_gsa */
+random_gsa:
+    # Stack setup
+    addi sp, sp, -12
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+
+    # Load the GSA ID to determine which GSA is used
+    la s0, GSA_ID
+    lw s0, 0(s0)
+
+    # Check which GSA to use: GSA0 or GSA1
+    bnez s0, random_gsa_id_1
+
+    random_gsa_id_0:
+        la s0, GSA0      # Load base address of GSA0
+        j random_gsa_draw
+
+    random_gsa_id_1:
+        la s0, GSA1      # Load base address of GSA1
+
+    random_gsa_draw:
+        li s1, 0                # Initialize line index (0 to N_GSA_LINES-1)
+
+    random_gsa_line_loop:
+        li t1, 0                # Clear t1 to accumulate the 12-bit GSA value
+        li t2, 0                # Initialize column index (0 to N_GSA_COLUMNS-1)
+
+    random_gsa_column_loop:
+        # Get a random 32-bit value
+        la t0, RANDOM_NUM       # Load random number address
+        lw t3, 0(t0)            # Load random number into t3
+
+        # Generate either 0 or 1 using modulo 2
+        andi t3, t3, 1          # t3 = t3 % 2
+
+        # Shift the result to the correct column position
+        sll t3, t3, t2          # t3 = t3 << column_index
+
+        # Accumulate the result into t1
+        or t1, t1, t3           # t1 = t1 | t3
+
+        # Increment column index
+        addi t2, t2, 1
+        li t4, N_GSA_COLUMNS    # Compare with number of columns
+        blt t2, t4, random_gsa_column_loop  # Loop for each column
+
+        # Now t1 contains the 12-bit value for the GSA line
+
+        # Calculate the line offset (each line is 4 bytes)
+        slli t3, s1, 2          # t3 = s1 * 4 (4 bytes per line)
+        add t0, s0, t3          # t0 = GSA base + offset (to target correct line)
+
+        # Store the random 12-bit value into the GSA line
+        sw t1, 0(t0)
+
+        # Increment the line index
+        addi s1, s1, 1          # s1 = s1 + 1
+        li t4, N_GSA_LINES      # Compare with number of lines
+        blt s1, t4, random_gsa_line_loop  # Loop for all lines
+
+    # Stack teardown
+    lw s1, 8(sp)
+    lw s0, 4(sp)
+    lw ra, 0(sp)
+    addi sp, sp, 12
+    ret
+
 /* END:random_gsa */
 
 /* BEGIN:change_speed */
