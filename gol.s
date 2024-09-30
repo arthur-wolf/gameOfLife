@@ -380,13 +380,55 @@ random_gsa:
 
 /* BEGIN:change_speed */
 change_speed:
-    beq a0, zero, change_speed_increment
+    # Stack setup
+    addi sp, sp, -16
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
+
+    beqz a0, change_speed_increment
 
 change_speed_decrement:
-    
+    la s0, SPEED
+    lw s1, 0(s0)
+    li s2, MIN_SPEED
+
+    # Check if the speed is already at the minimum
+    beqz s1, change_speed_end
+
+    # Decrement the speed
+    sub s1, s1, 1
+
+    # Store the new speed
+    sw s1, 0(s0)
+
+    # Jump to the end
+    j change_speed_end
+
 change_speed_increment:
 
+    la s0, SPEED
+    lw s1, 0(s0)
+    li s2, MAX_SPEED
+
+    # Check if the speed is already at the maximum
+    beq s1, s2, change_speed_end
+
+    # Increment the speed
+    add s1, s1, 1
+
+    # Store the new speed
+    sw s1, 0(s0)
+
 change_speed_end:
+    # Stack teardown
+    lw s2, 12(sp)
+    lw s1, 8(sp)
+    lw s0, 4(sp)
+    lw ra, 0(sp)
+    addi sp, sp, 16
+
     ret
 /* BEGIN:pause_game */
 pause_game:
