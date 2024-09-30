@@ -432,6 +432,23 @@ change_speed_end:
     ret
 /* BEGIN:pause_game */
 pause_game:
+    addi sp, sp, -12
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+
+    # Load the PAUSE value
+    la s0, PAUSE
+    lw s1, 0(s0)
+
+    # Toggle the PAUSE value
+    xor s1, s1, 1
+    sw s1, 0(s0)
+
+    lw s1, 8(sp)
+    lw s0, 4(sp)
+    lw ra, 0(sp)
+    addi sp, sp, 12
 /* END:pause_game */
 
 /* BEGIN:change_steps */
