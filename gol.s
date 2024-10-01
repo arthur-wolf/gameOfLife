@@ -51,15 +51,18 @@
 
 main:
   li sp, CUSTOM_VAR_END /* Set stack pointer, grows downwards */ 
-  # call reset_game
 
-  call random_gsa
+  li t0, SPEED
+  li t1, 1
+  sw t1, 0(t0)
+
+  main_loop:
+
+  li a0, 1
+  call change_speed
   nop
 
-  call draw_gsa
-  nop
-  
-  j main
+  j main_loop
 
 /* BEGIN:clear_leds */
 clear_leds:
@@ -395,10 +398,10 @@ change_speed_decrement:
     li s2, MIN_SPEED
 
     # Check if the speed is already at the minimum
-    beqz s1, change_speed_end
+    beq s1, s2, change_speed_end
 
     # Decrement the speed
-    sub s1, s1, 1
+    addi s1, s1, -1
 
     # Store the new speed
     sw s1, 0(s0)
