@@ -52,14 +52,9 @@
 main:
   li sp, CUSTOM_VAR_END /* Set stack pointer, grows downwards */ 
 
-  li t0, SPEED
-  li t1, 1
-  sw t1, 0(t0)
-
   main_loop:
 
-  li a0, 1
-  call change_speed
+  call pause_game
   nop
 
   j main_loop
@@ -452,6 +447,8 @@ pause_game:
     lw s0, 4(sp)
     lw ra, 0(sp)
     addi sp, sp, 12
+    
+    ret
 /* END:pause_game */
 
 /* BEGIN:change_steps */
