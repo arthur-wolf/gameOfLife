@@ -452,7 +452,53 @@ pause_game:
 /* END:pause_game */
 
 /* BEGIN:change_steps */
-change_steps:           
+change_steps:
+    addi sp, sp, -16
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
+
+    li s0, 0
+    
+    change_steps_check_b0:
+        beqz a0, change_steps_check_b1
+
+        li s1, 0x1
+        or s0, s0, s1
+    
+    change_steps_check_b1:
+        beqz a1, change_steps_check_b2
+
+        li s1, 0x10
+        or s0, s0, s1
+    
+    change_steps_check_b2:
+        beqz a2, change_steps_check_b3
+
+        li s1, 0x100
+        or s0, s0, s1
+
+    change_steps_next:
+
+        # Load the current step
+        la s1, CURR_STEP
+        lw s2, 0(s1)
+
+        # Add the new steps
+        add s2, s2, s0
+
+        # Store the new steps
+        sw s2, 0(s1)
+
+    change_steps_end:
+        # Stack teardown
+        lw s2, 12(sp)
+        lw s1, 8(sp)
+        lw s0, 4(sp)
+        lw ra, 0(sp)
+
+        ret
 /* END:change_steps */
 
 /* BEGIN:set_seed */
