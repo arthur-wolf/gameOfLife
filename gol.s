@@ -503,6 +503,57 @@ change_steps:
 
 /* BEGIN:set_seed */
 set_seed:
+    addi sp, sp, -20
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
+    sw s3, 16(sp)
+
+    # check if seed is bigger than N_SEEDS
+    mv s0, a0       # Move the seed id to s0
+    li t0, N_SEEDS  # Load the number of available seeds
+
+    # Save the seed id
+    la t0, SEED     # Load the address of the seed
+    sw s0, 0(t0)    # Store the seed id
+
+    bge s0, s1, set_seed_generate   # If the seed id is bigger than N_SEEDS, generate a random seed
+
+    set_seed_load:
+        la s1, SEEDS    # Load the address of the seeds
+        slli s0, s0, 2  # Multiply the seed id by 4 to get the correct offset
+        add s1, s1, s0  # Add the offset to the base address of the seeds
+
+        li s2, zero         # Line index
+        li s3, N_GSA_LINES  # Load the number of GSA lines
+
+        set_seed_load_loop:
+            lw s0, 0(s1)    # Load the seed line from the seed array
+
+            mv a0, s0       # Load the seed line 
+            mv a1, s2       # Load the line index
+            call set_gsa    # Set the GSA line
+
+            addi s2, s2, 1  # Increment the line index
+            addi s1, s1, 4  # Increment the seed array pointer
+            blt s2, s3, set_seed_load_loop  # Loop for all lines
+
+        j set_seed_end
+
+    set_seed_generate:
+        call random_gsa
+
+    set_seed_end:
+        # Stack teardown
+        lw s3, 16(sp)
+        lw s2, 12(sp)
+        lw s1, 8(sp)
+        lw s0, 4(sp)
+        lw ra, 0(sp)
+        addi sp, sp, 20
+
+        ret
 /* END:set_seed */
 
 /* BEGIN:increment_seed */
