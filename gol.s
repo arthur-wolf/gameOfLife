@@ -52,10 +52,16 @@
 main:
     li sp, CUSTOM_VAR_END /* Set stack pointer, grows downwards */ 
 
+    li a0, 0
+    call set_seed
+    nop
+
+    call draw_gsa
+    nop
+
     main_loop:
 
-    li a0, 4
-    call set_seed
+    call increment_seed
     nop
 
     call draw_gsa
@@ -565,7 +571,34 @@ set_seed:
 /* END:set_seed */
 
 /* BEGIN:increment_seed */
-increment_seed:                
+increment_seed:
+    addi sp, sp, -8
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+
+    la t1, SEED
+    lw s0, 0(t1)
+
+    li t0, N_SEEDS
+    beq s0, t0, increment_seed_generate
+    # s0 < 4
+
+    addi s0, s0, 1
+    sw s0, 0(t1)
+    beq s0, t0, increment_seed_generate
+
+    mv a0, s0
+    call set_seed
+    j increment_seed_end
+
+    increment_seed_generate:
+        call random_gsa
+
+    increment_seed_end:
+        lw s0, 4(sp)
+        lw ra, 0(sp)
+
+        ret
 /* END:increment_seed */
 
 /* BEGIN:update_state */
