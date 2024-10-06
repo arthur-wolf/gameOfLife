@@ -597,12 +597,88 @@ increment_seed:
     increment_seed_end:
         lw s0, 4(sp)
         lw ra, 0(sp)
+        addi sp, sp, 8
 
         ret
 /* END:increment_seed */
 
 /* BEGIN:update_state */
 update_state:
+    addi sp, sp, -12
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+
+    mv s1, a0      # Move the button state to s1
+
+    la s0, CURR_STATE
+    lw s0, 0(s0)
+
+    li t0, RAND
+    beq s0, t0, update_state_rand
+
+    li t0, RUN
+    beq s0, t0, update_state_run
+
+    update_state_init:
+        # Check if the JR button is pressed
+        li t0, JR
+        and s1, s1, t0
+        beqz s1, update_state_init_JC   # If the JR button is not pressed, check the JC button
+
+        # Set the game state to RUN
+        la t0, CURR_STATE
+        li t1, RUN
+        sw t1, 0(t0)
+
+        update_state_init_JC:
+            # Check if the JC button is pressed
+            li t0, JC
+            and s1, s1, t0
+            beqz s1, update_state_init_end  # If the JC button is not pressed, end
+
+            li t0, SEED
+            lw t0, 0(t0)
+            li t1, N_SEEDS
+            blt t0, t1, update_state_init_end  # If the seed is not random, end
+
+            # Set the game state to RAND
+            la t0, CURR_STATE
+            li t1, RAND
+            sw t1, 0(t0)
+            j update_state_end
+
+    update_state_rand:
+        # Check if the JR button is pressed
+        li t0, JR
+        and s1, s1, t0
+        beqz s1, update_state_end  # If the JR button is not pressed, end
+
+        # Set the game state to RUN
+        la t0, CURR_STATE
+        li t1, RUN
+        sw t1, 0(t0)
+        j update_state_end
+
+    update_state_run:
+        # Check if the JB button is pressed
+        li t0, JB
+        and s1, s1, t0
+        beqz s1, update_state_end  # If the JB button is not pressed, end
+
+        # Set the game state to INIT
+        la t0, CURR_STATE
+        li t1, INIT
+        sw t1, 0(t0)
+        call reset_game
+
+    update_state_end:
+        lw s1, 8(sp)
+        lw s0, 4(sp)
+        lw ra, 0(sp)
+        addi sp, sp, 12
+
+        ret
 /* END:update_state */
 
 /* BEGIN:select_action */
