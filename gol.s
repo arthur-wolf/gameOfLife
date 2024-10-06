@@ -54,7 +54,11 @@ main:
 
     main_loop:
 
-    call pause_game
+    li a0, 4
+    call set_seed
+    nop
+
+    call draw_gsa
     nop
 
     j main_loop
@@ -474,13 +478,12 @@ change_steps:
         or s0, s0, s1
     
     change_steps_check_b2:
-        beqz a2, change_steps_check_b3
+        beqz a2, change_steps_next
 
         li s1, 0x100
         or s0, s0, s1
 
     change_steps_next:
-
         # Load the current step
         la s1, CURR_STEP
         lw s2, 0(s1)
@@ -512,20 +515,23 @@ set_seed:
 
     # check if seed is bigger than N_SEEDS
     mv s0, a0       # Move the seed id to s0
-    li t0, N_SEEDS  # Load the number of available seeds
 
     # Save the seed id
     la t0, SEED     # Load the address of the seed
     sw s0, 0(t0)    # Store the seed id
 
-    bge s0, s1, set_seed_generate   # If the seed id is bigger than N_SEEDS, generate a random seed
+    li t0, N_SEEDS  # Load the number of available seeds
+
+    bge s0, t0, set_seed_generate   # If the seed id is bigger than N_SEEDS, generate a random seed
 
     set_seed_load:
         la s1, SEEDS    # Load the address of the seeds
         slli s0, s0, 2  # Multiply the seed id by 4 to get the correct offset
         add s1, s1, s0  # Add the offset to the base address of the seeds
+        # s1 now points to the correct seed
+        lw s1, 0(s1)    # Load the seed
 
-        li s2, zero         # Line index
+        li s2, 0            # Line index
         li s3, N_GSA_LINES  # Load the number of GSA lines
 
         set_seed_load_loop:
@@ -542,7 +548,9 @@ set_seed:
         j set_seed_end
 
     set_seed_generate:
-        call random_gsa
+        li t0, 4
+        li t1, SEED
+        sw t0, 0(t1)
 
     set_seed_end:
         # Stack teardown
