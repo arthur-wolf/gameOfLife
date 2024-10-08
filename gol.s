@@ -837,6 +837,42 @@ select_action:
 
 /* BEGIN:cell_fate */
 cell_fate:
+    addi sp, sp, -4
+    sw ra, 0(sp)
+
+    mv t0, a0   # Number of live neighbours
+    mv t1, a1   # Current cell state
+
+    beqz t1, cell_fate_dead # If the cell is dead, go to cell_fate_dead
+
+    cell_fate_alive:
+        li t2, 2
+        li t3, 3
+
+        blt t0, t2, cell_fate_alive_die  # If the number of live neighbours is less than 2, the cell dies
+        bgt t0, t3, cell_fate_alive_die  # If the number of live neighbours is greater than 3, the cell dies
+
+        # Otherwise, the cell stays alive
+        li a0, 1
+        j cell_fate_end
+
+        cell_fate_alive_die:
+            li a0, 0
+            j cell_fate_end
+
+    cell_fate_dead:
+        li t3, 3
+
+        bne t0, t3, cell_fate_dead_end  # If the number of live neighbours is not 3, the cell stays dead
+
+        # Otherwise, the cell becomes alive
+        li a0, 1
+
+    cell_fate_end:
+        lw ra, 0(sp)
+        addi sp, sp, 4
+
+        ret
 /* END:cell_fate */
 
 /* BEGIN:find_neighbours */
