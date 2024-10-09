@@ -56,9 +56,12 @@ main:
     li t1, 1
     sw t1, 0(t0)
 
-    li a0, 1
+    li a0, 4
+    call random_gsa
     call set_seed
     nop
+
+    call mask
 
     call draw_gsa
     nop
@@ -66,6 +69,9 @@ main:
     main_loop:
 
     call update_gsa
+    nop
+
+    call mask
     nop
 
     call draw_gsa
@@ -1147,6 +1153,90 @@ reset_game:
 
 /* BEGIN:mask */
 mask:
+    addi sp, sp, -32
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
+    sw s3, 16(sp)
+    sw s4, 20(sp)
+    sw s5, 24(sp)
+    sw s6, 28(sp)
+
+
+    la t0, SEED
+    lw s0, 0(t0) # s0 is the mask ID
+    
+    li t0, N_SEEDS
+
+    # If the mask ID is bigger than N_SEEDS, set it to 4
+    blt s0, t0, mask_next
+
+    li s0, 4
+
+    mask_next:
+
+        slli s0, s0, 2  # s0 = s0 << 2 --> mask offset
+
+        la s1, MASKS
+        add s1, s1, s0  # s1 is the mask address
+        lw s1, 0(s1)    # s1 is the mask base address
+
+        li s3, 0                # s3 is the line index (y)
+        li s4, N_GSA_LINES      # s4 is the number of lines
+
+        mask_line_loop:
+            # Get the GSA line
+            mv a0, s3
+            call get_gsa
+            mv s5, a0
+
+            # Load the corresponding mask line
+            lw s6, 0(s1)
+
+            # Apply the mask
+            and s5, s5, s6
+
+            # Set the new GSA line
+            mv a0, s5
+            mv a1, s3
+            call set_gsa
+
+            # Draw the mask in blue
+            li t0, 0xFFF
+            xor s6, s6, t0
+
+            slli s6, s6, 16     # LEDS value
+
+            li t0, BLUE         # LEDS color
+            or s6, s6, t0
+
+            ori s6, s6, 0xf     # Column selector
+
+            mv t0, s3
+            slli t0, t0, 4
+            or s6, s6, t0       # Row selector
+
+            la t0, LEDS
+            sw s6, 0(t0)
+            
+            addi s1, s1, 4                      # increment the mask line index
+            addi s3, s3, 1                      # increment the line index
+            blt s3, s4, mask_line_loop           # if s3 < s4, loop
+
+    mask_end:
+        lw s6, 28(sp)
+        lw s5, 24(sp)
+        lw s4, 20(sp)
+        lw s3, 16(sp)
+        lw s2, 12(sp)
+        lw s1, 8(sp)
+        lw s0, 4(sp)
+        lw ra, 0(sp)
+        addi sp, sp, 32
+
+        ret
+
 /* END:mask */
 
 /* 7-segment display */
