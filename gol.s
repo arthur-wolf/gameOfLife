@@ -876,7 +876,179 @@ cell_fate:
 /* END:cell_fate */
 
 /* BEGIN:find_neighbours */
+// arguments:
+//      a0 : x-coordinate
+//      a1 : y-coordinate
+// returns:
+//      a0 : number of live neighbours
+//      a1 : state of the cell at (x, y)
 find_neighbours:
+    addi sp, sp, -36
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
+    sw s3, 16(sp)
+    sw s4, 20(sp)
+    sw s5, 24(sp)
+    sw s6, 28(sp)
+    sw s7, 32(sp)
+
+    mv s1, a0   // s1 = x
+    mv s4, a1   // s4 = y
+    li s6, 0    // s6 = number of live neighbours
+    li s7, 0    // s7 = state of the cell at (x, y)
+
+    // -------- Row handling --------
+
+    // Check if the cell is on the top row
+    li t0, 0
+    beq s4, t0, find_neighbours_top_row
+
+    // Check if the cell is on the bottom row
+    li t0, N_GSA_LINES
+    addi t0, t0, -1
+    beq s4, t0, find_neighbours_bottom_row
+
+    addi s3, s4, -1
+    addi s5, s4, 1
+
+    j find_neighbours_load_rows
+
+    // s3 : y-1
+    // s4 : y
+    // s5 : y+1
+
+    find_neighbours_top_row:
+        li s3, 9    // s3 = 9 = y-1
+        li s5, 1    // s5 = 1 = y+1
+        j find_neighbours_load_rows
+
+    find_neighbours_bottom_row:
+        li s3, 8    // s3 = 8 = y-1
+        li s5, 0    // s5 = 0 = y+1
+        j find_neighbours_load_rows
+
+    find_neighbours_load_rows:
+        mv a0, s3
+        call get_gsa
+        mv s3, a0
+
+        mv a0, s4
+        call get_gsa
+        mv s4, a0
+
+        mv a0, s5
+        call get_gsa
+        mv s5, a0
+
+        // At this point, s3, s4, and s5 contain the GSA lines for y-1, y, and y+1, respectively
+
+    // -------- Column handling --------
+
+    // Check if the cell is on the left column
+    li t0, 0
+    beq s1, t0, find_neighbours_left_column
+
+    // Check if the cell is on the right column
+    li t0, N_GSA_COLUMNS
+    addi t0, t0, -1
+    beq s1, t0, find_neighbours_right_column
+
+    addi s0, s1, -1
+    addi s2, s1, 1
+
+    j find_neighbours_check
+
+    // s0 : x-1
+    // s1 : x
+    // s2 : x+1
+
+    find_neighbours_left_column:
+        li, s0, 11  // s0 = 11 = x-1
+        li, s2, 1   // s2 = 1 = x+1
+        j find_neighbours_check
+
+    find_neighbours_right_column:
+        li, s0, 10  // s0 = 10 = x-1
+        li, s2, 0   // s2 = 0 = x+1
+        j find_neighbours_check
+
+    find_neighbours_check:
+        li t0, 1
+        // Check neighbours for the first row :
+        // 1. (x-1, y-1)
+        sll t1, t0, s0
+        and t1, t1, s3
+        snez t1, t1
+        add s6, s6, t1
+
+        // 2. (x, y-1)
+        sll t1, t0, s1
+        and t1, t1, s3
+        snez t1, t1
+        add s6, s6, t1
+
+        // 3. (x+1, y-1)
+        sll t1, t0, s2
+        and t1, t1, s3
+        snez t1, t1
+        add s6, s6, t1
+
+        // Check neighbours for the second row :
+        // 4. (x-1, y)
+        sll t1, t0, s0
+        and t1, t1, s4
+        snez t1, t1
+        add s6, s6, t1
+
+        // 5. (x, y)
+        sll t1, t0, s1
+        and t1, t1, s4
+        snez t1, t1
+        add s7, s7, t1
+
+        // 6. (x+1, y)
+        sll t1, t0, s2
+        and t1, t1, s4
+        snez t1, t1
+        add s6, s6, t1
+
+        // Check neighbours for the third row :
+        // 7. (x-1, y+1)
+        sll t1, t0, s0
+        and t1, t1, s5
+        snez t1, t1
+        add s6, s6, t1
+
+        // 8. (x, y+1)
+        sll t1, t0, s1
+        and t1, t1, s5
+        snez t1, t1
+        add s6, s6, t1
+
+        // 9. (x+1, y+1)
+        sll t1, t0, s2
+        and t1, t1, s5
+        snez t1, t1
+        add s6, s6, t1
+
+    find_neighbours_end:
+        mv a0, s6
+        mv a1, s7
+
+        lw s7, 32(sp)
+        lw s6, 28(sp)
+        lw s5, 24(sp)
+        lw s4, 20(sp)
+        lw s3, 16(sp)
+        lw s2, 12(sp)
+        lw s1, 8(sp)
+        lw s0, 4(sp)
+        lw ra, 0(sp)
+        addi sp, sp, 36
+
+        ret
 /* END:find_neighbours */
 
 /* BEGIN:update_gsa */
