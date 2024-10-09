@@ -1053,6 +1053,70 @@ find_neighbours:
 
 /* BEGIN:update_gsa */
 update_gsa:
+    addi sp, sp, -32
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
+    sw s3, 16(sp)
+    sw s4, 20(sp)
+    sw s5, 24(sp)
+    sw s6, 28(sp)
+
+    // Only update the GSA if the game is not paused
+    la t0, PAUSE
+    lw t0, 0(t0)
+    beq t1, PAUSED, update_gsa_end
+
+    // Load the current GSA ID
+    la s0, GSA_ID
+    lw s0, 0(s0)
+
+    li s1, 0                // s1 is the line index (y)
+    li s2, N_GSA_LINES      // s2 is the number of lines
+
+    update_gsa_line_loop:
+        li s3, 0                // s3 is the column index (x)
+        li s4, N_GSA_COLUMNS    // s4 is the number of columns
+        li s6, 0                // s6 is the gsa line that will be updated
+
+        update_gsa_column_loop:
+            mv a0, s3           // get the current column index
+            mv a1, s1           // get the current line index
+            call find_neighbours
+            call cell_fate
+
+            mv s5, a0           // s5 is the new state of the cell at (x, y), 1 = alive
+            sll s5, s5, s3
+            or s6, s6, s5       // s6 = s6 | s5
+
+            addi s3, s3, 1                      // increment the column index
+            blt s3, s4, update_gsa_column_loop   // if s3 < s4, loop
+
+            // Save the new GSA line
+            xori s0, s0, 1
+
+            mv a0, s6           // a0 is the new GSA line
+            mv a1, s1           // a1 is the line index
+            call set_gsa        // set the new GSA line
+
+            xori s0, s0, 1
+
+        addi s1, s1, 1                      // increment the line index
+        blt s1, s2, update_gsa_line_loop     // if s1 < s2, loop
+
+    update_gsa_end:
+        lw s6, 28(sp)
+        lw s5, 24(sp)
+        lw s4, 20(sp)
+        lw s3, 16(sp)
+        lw s2, 12(sp)
+        lw s1, 8(sp)
+        lw s0, 4(sp)
+        lw ra, 0(sp)
+        addi sp, sp, 32
+
+        ret
 /* END:update_gsa */
 
 /* BEGIN:get_input */
