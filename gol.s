@@ -52,8 +52,11 @@
 main:
     li sp, CUSTOM_VAR_END /* Set stack pointer, grows downwards */ 
 
-    li a0, 0
-    call set_seed
+    li t0, PAUSE
+    li t1, 1
+    sw t1, 0(t0)
+
+    call random_gsa
     nop
 
     call draw_gsa
@@ -61,7 +64,7 @@ main:
 
     main_loop:
 
-    call increment_seed
+    call update_gsa
     nop
 
     call draw_gsa
@@ -635,12 +638,12 @@ update_state:
             # Check if the JC button is pressed
             li t0, JC
             and s1, s1, t0
-            beqz s1, update_state_init_end  # If the JC button is not pressed, end
+            beqz s1, update_state_end  # If the JC button is not pressed, end
 
             li t0, SEED
             lw t0, 0(t0)
             li t1, N_SEEDS
-            blt t0, t1, update_state_init_end  # If the seed is not random, end
+            blt t0, t1, update_state_end  # If the seed is not random, end
 
             # Set the game state to RAND
             la t0, CURR_STATE
@@ -707,7 +710,7 @@ select_action:
         # Check JC button
         li t0, JC
         and t1, s1, t0
-        beqz t1, select_action_init_JR  # If JC is not pressed, check digit buttons
+        beqz t1, select_action_init_digit  # If JC is not pressed, check digit buttons
 
         call increment_seed
         j select_action_end
@@ -847,10 +850,10 @@ cell_fate:
 
     cell_fate_alive:
         li t2, 2
-        li t3, 3
+        li t3, 4
 
         blt t0, t2, cell_fate_alive_die  # If the number of live neighbours is less than 2, the cell dies
-        bgt t0, t3, cell_fate_alive_die  # If the number of live neighbours is greater than 3, the cell dies
+        bge t0, t3, cell_fate_alive_die  # If the number of live neighbours is greater than 3, the cell dies
 
         # Otherwise, the cell stays alive
         li a0, 1
@@ -863,7 +866,7 @@ cell_fate:
     cell_fate_dead:
         li t3, 3
 
-        bne t0, t3, cell_fate_dead_end  # If the number of live neighbours is not 3, the cell stays dead
+        bne t0, t3, cell_fate_end  # If the number of live neighbours is not 3, the cell stays dead
 
         # Otherwise, the cell becomes alive
         li a0, 1
@@ -876,12 +879,12 @@ cell_fate:
 /* END:cell_fate */
 
 /* BEGIN:find_neighbours */
-// arguments:
-//      a0 : x-coordinate
-//      a1 : y-coordinate
-// returns:
-//      a0 : number of live neighbours
-//      a1 : state of the cell at (x, y)
+# arguments:
+#      a0 : x-coordinate
+#      a1 : y-coordinate
+# returns:
+#      a0 : number of live neighbours
+#      a1 : state of the cell at (x, y)
 find_neighbours:
     addi sp, sp, -36
     sw ra, 0(sp)
@@ -894,18 +897,18 @@ find_neighbours:
     sw s6, 28(sp)
     sw s7, 32(sp)
 
-    mv s1, a0   // s1 = x
-    mv s4, a1   // s4 = y
-    li s6, 0    // s6 = number of live neighbours
-    li s7, 0    // s7 = state of the cell at (x, y)
+    mv s1, a0   # s1 = x
+    mv s4, a1   # s4 = y
+    li s6, 0    # s6 = number of live neighbours
+    li s7, 0    # s7 = state of the cell at (x, y)
 
-    // -------- Row handling --------
+    # -------- Row handling --------
 
-    // Check if the cell is on the top row
+    # Check if the cell is on the top row
     li t0, 0
     beq s4, t0, find_neighbours_top_row
 
-    // Check if the cell is on the bottom row
+    # Check if the cell is on the bottom row
     li t0, N_GSA_LINES
     addi t0, t0, -1
     beq s4, t0, find_neighbours_bottom_row
@@ -915,18 +918,18 @@ find_neighbours:
 
     j find_neighbours_load_rows
 
-    // s3 : y-1
-    // s4 : y
-    // s5 : y+1
+    # s3 : y-1
+    # s4 : y
+    # s5 : y+1
 
     find_neighbours_top_row:
-        li s3, 9    // s3 = 9 = y-1
-        li s5, 1    // s5 = 1 = y+1
+        li s3, 9    # s3 = 9 = y-1
+        li s5, 1    # s5 = 1 = y+1
         j find_neighbours_load_rows
 
     find_neighbours_bottom_row:
-        li s3, 8    // s3 = 8 = y-1
-        li s5, 0    // s5 = 0 = y+1
+        li s3, 8    # s3 = 8 = y-1
+        li s5, 0    # s5 = 0 = y+1
         j find_neighbours_load_rows
 
     find_neighbours_load_rows:
@@ -942,15 +945,15 @@ find_neighbours:
         call get_gsa
         mv s5, a0
 
-        // At this point, s3, s4, and s5 contain the GSA lines for y-1, y, and y+1, respectively
+        # At this point, s3, s4, and s5 contain the GSA lines for y-1, y, and y+1, respectively
 
-    // -------- Column handling --------
+    # -------- Column handling --------
 
-    // Check if the cell is on the left column
+    # Check if the cell is on the left column
     li t0, 0
     beq s1, t0, find_neighbours_left_column
 
-    // Check if the cell is on the right column
+    # Check if the cell is on the right column
     li t0, N_GSA_COLUMNS
     addi t0, t0, -1
     beq s1, t0, find_neighbours_right_column
@@ -960,74 +963,74 @@ find_neighbours:
 
     j find_neighbours_check
 
-    // s0 : x-1
-    // s1 : x
-    // s2 : x+1
+    # s0 : x-1
+    # s1 : x
+    # s2 : x+1
 
     find_neighbours_left_column:
-        li s0, 11  // s0 = 11 = x-1
-        li s2, 1   // s2 = 1 = x+1
+        li s0, 11  # s0 = 11 = x-1
+        li s2, 1   # s2 = 1 = x+1
         j find_neighbours_check
 
     find_neighbours_right_column:
-        li s0, 10  // s0 = 10 = x-1
-        li s2, 0   // s2 = 0 = x+1
+        li s0, 10  # s0 = 10 = x-1
+        li s2, 0   # s2 = 0 = x+1
         j find_neighbours_check
 
     find_neighbours_check:
         li t0, 1
-        // Check neighbours for the first row :
-        // 1. (x-1, y-1)
+        # Check neighbours for the first row :
+        # 1. (x-1, y-1)
         sll t1, t0, s0
         and t1, t1, s3
         snez t1, t1
         add s6, s6, t1
 
-        // 2. (x, y-1)
+        # 2. (x, y-1)
         sll t1, t0, s1
         and t1, t1, s3
         snez t1, t1
         add s6, s6, t1
 
-        // 3. (x+1, y-1)
+        # 3. (x+1, y-1)
         sll t1, t0, s2
         and t1, t1, s3
         snez t1, t1
         add s6, s6, t1
 
-        // Check neighbours for the second row :
-        // 4. (x-1, y)
+        # Check neighbours for the second row :
+        # 4. (x-1, y)
         sll t1, t0, s0
         and t1, t1, s4
         snez t1, t1
         add s6, s6, t1
 
-        // 5. (x, y)
+        # 5. (x, y)
         sll t1, t0, s1
         and t1, t1, s4
         snez t1, t1
         add s7, s7, t1
 
-        // 6. (x+1, y)
+        # 6. (x+1, y)
         sll t1, t0, s2
         and t1, t1, s4
         snez t1, t1
         add s6, s6, t1
 
-        // Check neighbours for the third row :
-        // 7. (x-1, y+1)
+        # Check neighbours for the third row :
+        # 7. (x-1, y+1)
         sll t1, t0, s0
         and t1, t1, s5
         snez t1, t1
         add s6, s6, t1
 
-        // 8. (x, y+1)
+        # 8. (x, y+1)
         sll t1, t0, s1
         and t1, t1, s5
         snez t1, t1
         add s6, s6, t1
 
-        // 9. (x+1, y+1)
+        # 9. (x+1, y+1)
         sll t1, t0, s2
         and t1, t1, s5
         snez t1, t1
@@ -1063,47 +1066,56 @@ update_gsa:
     sw s5, 24(sp)
     sw s6, 28(sp)
 
-    // Only update the GSA if the game is not paused
+    # Only update the GSA if the game is not paused
     la t0, PAUSE
     lw t0, 0(t0)
-    beq t1, PAUSED, update_gsa_end
+    li t2, PAUSED
+    beq t1, t2, update_gsa_end
 
-    // Load the current GSA ID
+    # Load the current GSA ID
     la s0, GSA_ID
     lw s0, 0(s0)
 
-    li s1, 0                // s1 is the line index (y)
-    li s2, N_GSA_LINES      // s2 is the number of lines
+    li s1, 0                # s1 is the line index (y)
+    li s2, N_GSA_LINES      # s2 is the number of lines
 
     update_gsa_line_loop:
-        li s3, 0                // s3 is the column index (x)
-        li s4, N_GSA_COLUMNS    // s4 is the number of columns
-        li s6, 0                // s6 is the gsa line that will be updated
+        li s3, 0                # s3 is the column index (x)
+        li s4, N_GSA_COLUMNS    # s4 is the number of columns
+        li s6, 0                # s6 is the gsa line that will be updated
 
         update_gsa_column_loop:
-            mv a0, s3           // get the current column index
-            mv a1, s1           // get the current line index
+            mv a0, s3           # get the current column index
+            mv a1, s1           # get the current line index
             call find_neighbours
             call cell_fate
 
-            mv s5, a0           // s5 is the new state of the cell at (x, y), 1 = alive
+            mv s5, a0           # s5 is the new state of the cell at (x, y), 1 = alive
             sll s5, s5, s3
-            or s6, s6, s5       // s6 = s6 | s5
+            or s6, s6, s5       # s6 = s6 | s5
 
-            addi s3, s3, 1                      // increment the column index
-            blt s3, s4, update_gsa_column_loop   // if s3 < s4, loop
+            addi s3, s3, 1                      # increment the column index
+            blt s3, s4, update_gsa_column_loop   # if s3 < s4, loop
 
-            // Save the new GSA line
-            xori s0, s0, 1
+        # Save the new GSA line
+        xori s0, s0, 1
+        la t0, GSA_ID
+        sw s0, 0(t0)
 
-            mv a0, s6           // a0 is the new GSA line
-            mv a1, s1           // a1 is the line index
-            call set_gsa        // set the new GSA line
+        mv a0, s6           # a0 is the new GSA line
+        mv a1, s1           # a1 is the line index
+        call set_gsa        # set the new GSA line
 
-            xori s0, s0, 1
+        xori s0, s0, 1
+        la t0, GSA_ID
+        sw s0, 0(t0)
 
-        addi s1, s1, 1                      // increment the line index
-        blt s1, s2, update_gsa_line_loop     // if s1 < s2, loop
+        addi s1, s1, 1                      # increment the line index
+        blt s1, s2, update_gsa_line_loop     # if s1 < s2, loop
+
+        xori s0, s0, 1
+        la t0, GSA_ID
+        sw s0, 0(t0)
 
     update_gsa_end:
         lw s6, 28(sp)
