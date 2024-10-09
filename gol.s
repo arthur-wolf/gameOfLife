@@ -965,13 +965,13 @@ find_neighbours:
     // s2 : x+1
 
     find_neighbours_left_column:
-        li, s0, 11  // s0 = 11 = x-1
-        li, s2, 1   // s2 = 1 = x+1
+        li s0, 11  // s0 = 11 = x-1
+        li s2, 1   // s2 = 1 = x+1
         j find_neighbours_check
 
     find_neighbours_right_column:
-        li, s0, 10  // s0 = 10 = x-1
-        li, s2, 0   // s2 = 0 = x+1
+        li s0, 10  // s0 = 10 = x-1
+        li s2, 0   // s2 = 0 = x+1
         j find_neighbours_check
 
     find_neighbours_check:
