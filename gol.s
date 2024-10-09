@@ -56,7 +56,8 @@ main:
     li t1, 1
     sw t1, 0(t0)
 
-    call random_gsa
+    li a0, 1
+    call set_seed
     nop
 
     call draw_gsa
@@ -865,6 +866,7 @@ cell_fate:
 
     cell_fate_dead:
         li t3, 3
+        li a0, 0
 
         bne t0, t3, cell_fate_end  # If the number of live neighbours is not 3, the cell stays dead
 
@@ -1070,7 +1072,7 @@ update_gsa:
     la t0, PAUSE
     lw t0, 0(t0)
     li t2, PAUSED
-    beq t1, t2, update_gsa_end
+    beq t0, t2, update_gsa_end
 
     # Load the current GSA ID
     la s0, GSA_ID
