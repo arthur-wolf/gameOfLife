@@ -52,28 +52,13 @@
 main:
     li sp, CUSTOM_VAR_END /* Set stack pointer, grows downwards */ 
 
-    li t0, PAUSE
-    li t1, 1
-    sw t1, 0(t0)
-
-    li a0, 1
-    call set_seed
-    nop
-
-    call mask
-
-    call draw_gsa
-    nop
+    li t0, 1234
+    la t1, CURR_STEP
+    sw t0, 0(t1)
 
     main_loop:
 
-    call update_gsa
-    nop
-
-    call mask
-    nop
-
-    call draw_gsa
+    call decrement_step
     nop
 
     j main_loop
@@ -530,10 +515,6 @@ set_seed:
 
     # check if seed is bigger than N_SEEDS
     mv s0, a0       # Move the seed id to s0
-
-    # Save the seed id
-    la t0, SEED     # Load the address of the seed
-    sw s0, 0(t0)    # Store the seed id
 
     li t0, N_SEEDS  # Load the number of available seeds
 
@@ -1200,6 +1181,120 @@ get_input:
 
 /* BEGIN:decrement_step */
 decrement_step:
+    addi sp, sp, -28
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
+    sw s3, 16(sp)
+    sw s4, 20(sp)
+    sw s5, 24(sp)
+
+    li t0, RUN
+    la s0, CURR_STATE
+    lw s0, 0(s0)
+
+    beq s0, t0, decrement_step_run
+
+    decrement_step_display:
+    # Display the current number of steps and return 0
+        la t0, CURR_STEP
+        lw s0, 0(t0)    # s0 is the current number of steps
+
+        la s1, font_data
+        la s2, SEVEN_SEGS
+
+        # -------- Display the digits --------
+
+        # Extract the thousands digit
+        li t0, 0              # t0 = thousands digit (initialize to 0)
+        li t4, 1000           # t4 = 1000
+        thousands_loop:
+            blt s0, t4, hundreds_loop  # If s0 < 1000, go to hundreds extraction
+            sub s0, s0, t4        # Subtract 1000 from s0
+            addi t0, t0, 1        # Increment the thousands digit
+            j thousands_loop
+
+            # Extract the hundreds digit
+        hundreds_loop:
+            li t1, 0              # t1 = hundreds digit (initialize to 0)
+            li t4, 100            # t4 = 100
+        hundreds_loop_start:
+            blt s0, t4, tens_loop # If s0 < 100, go to tens extraction
+            sub s0, s0, t4        # Subtract 100 from s0
+            addi t1, t1, 1        # Increment the hundreds digit
+            j hundreds_loop_start
+
+            # Extract the tens digit
+        tens_loop:
+            li t2, 0              # t2 = tens digit (initialize to 0)
+            li t4, 10             # t4 = 10
+        tens_loop_start:
+            blt s0, t4, units_loop # If s0 < 10, go to units extraction
+            sub s0, s0, t4        # Subtract 10 from s0
+            addi t2, t2, 1        # Increment the tens digit
+            j tens_loop_start
+
+            # Extract the units digit
+        units_loop:
+            mv t3, s0             # The remaining value in s0 is the units digit
+        
+        # Offset the font data
+        slli t0, t0, 2
+        slli t1, t1, 2
+        slli t2, t2, 2
+        slli t3, t3, 2
+
+        add t4, s1, t0  # s4 = thousands font data address
+        lw s4, 0(t4)
+        slli s4, s4, 24
+
+        add t4, s1, t1  # s4 = hundreds font data address
+        lw s5, 0(t4)
+        slli s5, s5, 16
+        or s4, s4, s5
+
+        add t4, s1, t2  # s4 = tens font data address
+        lw s5, 0(t4)
+        slli s5, s5, 8
+        or s4, s4, s5
+
+        add t4, s1, t3  # s4 = units font data address
+        lw s5, 0(t4)
+        or s4, s4, s5
+
+        sw s4, 0(s2)
+
+        li a0, 0
+
+    decrement_step_run:
+        la t0, CURR_STEP
+        lw t0, 0(t0)
+        bnez t0, decrement_step_decrement
+
+        li a0, 1
+        j decrement_step_end
+
+    decrement_step_decrement:
+        la t0, CURR_STEP
+        lw t1, 0(t0)
+
+        addi t1, t1, -1
+        sw t1, 0(t0)
+
+        j decrement_step_display
+
+    decrement_step_end:
+        lw s5, 24(sp)
+        lw s4, 20(sp)
+        lw s3, 16(sp)
+        lw s2, 12(sp)
+        lw s1, 8(sp)
+        lw s0, 4(sp)
+        lw ra, 0(sp)
+        addi sp, sp, 28
+
+        ret
 /* END:decrement_step */
 
 /* BEGIN:reset_game */
