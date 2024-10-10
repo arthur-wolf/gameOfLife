@@ -56,8 +56,7 @@ main:
     li t1, 1
     sw t1, 0(t0)
 
-    li a0, 4
-    call random_gsa
+    li a0, 1
     call set_seed
     nop
 
@@ -1141,6 +1140,53 @@ update_gsa:
 
 /* BEGIN:get_input */
 get_input:
+    # Load the button state
+    li t0, BUTTONS
+    lw s0, 0(t0)
+
+    # Clear the button state
+    sw zero, 0(t0)
+
+    # extract the smallest button pressed and return it
+    li t0, JC
+    and s1, s0, t0
+    bnez s1, get_input_end
+
+    li t0, JR
+    and s1, s0, t0
+    bnez s1, get_input_end
+
+    li t0, JL
+    and s1, s0, t0
+    bnez s1, get_input_end
+
+    li t0, JB
+    and s1, s0, t0
+    bnez s1, get_input_end
+
+    li t0, JT
+    and s1, s0, t0
+    bnez s1, get_input_end
+
+    li t0, BUTTON_1
+    and s1, s0, t0
+    bnez s1, get_input_end
+
+    li t0, BUTTON_0
+    and s1, s0, t0
+    bnez s1, get_input_end
+
+    li t0, BUTTON_2
+    and s1, s0, t0
+    bnez s1, get_input_end
+
+    # No button pressed
+    li s1, 0
+
+    get_input_end:
+        mv a0, s1
+
+        ret
 /* END:get_input */
 
 /* BEGIN:decrement_step */
