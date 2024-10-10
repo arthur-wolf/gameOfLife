@@ -52,7 +52,7 @@
 main:
     li sp, CUSTOM_VAR_END /* Set stack pointer, grows downwards */ 
 
-    li t0, 1234
+    li t0, 50
     la t1, CURR_STEP
     sw t0, 0(t1)
 
@@ -1299,6 +1299,39 @@ decrement_step:
 
 /* BEGIN:reset_game */
 reset_game:
+    addi sp, sp, -4
+    sw ra, 0(sp)
+
+    # Set current steps to 1 and display it
+    la t0, CURR_STEP
+    la t1, 2
+    sw t1, 0(t0)
+    call decrement_step
+
+    # Use GSA0
+    la t0, GSA_ID
+    sw zero, 0(t0)
+
+    # select seed 0
+    la a0, 0
+    call set_seed
+    # Should we mask here ?
+    call draw_gsa
+
+    # Set the game to PAUSED
+    li t0, PAUSED
+    la t1, PAUSE
+    sw t0, 0(t1)
+
+    # Set the game speed to MIN_SPEED
+    li t0, MIN_SPEED
+    la t1, SPEED
+    sw t0, 0(t1)
+
+    addi sp, sp, 4
+    lw ra, 0(sp)
+
+    ret
 /* END:reset_game */
 
 /* BEGIN:mask */
