@@ -1140,6 +1140,11 @@ update_gsa:
 
 /* BEGIN:get_input */
 get_input:
+    addi sp, sp, -12
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+
     # Load the button state
     li t0, BUTTONS
     lw s0, 0(t0)
@@ -1185,6 +1190,10 @@ get_input:
 
     get_input_end:
         mv a0, s1
+
+        lw s1, 8(sp)
+        lw s0, 4(sp)
+        lw ra, 0(sp)
 
         ret
 /* END:get_input */
