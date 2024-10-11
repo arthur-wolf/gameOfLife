@@ -52,17 +52,28 @@
 main:
     li sp, CUSTOM_VAR_END /* Set stack pointer, grows downwards */ 
 
-    li t0, 50
-    la t1, CURR_STEP
-    sw t0, 0(t1)
+    call reset_game
+
+    call get_input  # input is in a0 
+    mv s0, a0
 
     main_loop:
+        mv a0, s0
+        call select_action
+        call update_state
+        call update_gsa
+        mv s0, a0
+        call mask
+        call draw_gsa
+        # call wait
+        call decrement_step
+        mv s1, a0
+        call get_input
+        mv s0, a0
 
-    call decrement_step
-    nop
+        beqz s1, main_loop  # if a0 == 0, go to main_loop
 
-    j main_loop
-
+    j main
 /* BEGIN:clear_leds */
 clear_leds:
     addi sp, sp, -12
@@ -71,7 +82,7 @@ clear_leds:
     sw s1, 8(sp)
 
   # red leds
-    li s0, 0x01FF           # select all leds and turn them off
+    li s0, 0x03FF           # select all leds and turn them off
     la s1, LEDS             # load leds address
     sw s0, 0(s1)            # store s0 in leds
     
@@ -156,6 +167,7 @@ wait_end:
     lw s1, 8(sp)
     lw s0, 4(sp)
     lw ra, 0(sp)
+    addi sp, sp, 12
 
     ret
 /* END:wait */
@@ -376,6 +388,7 @@ random_gsa:
     lw s0, 4(sp)
     lw ra, 0(sp)
     addi sp, sp, 12
+
     ret
 
 /* END:random_gsa */
@@ -501,6 +514,8 @@ change_steps:
         lw s0, 4(sp)
         lw ra, 0(sp)
 
+        addi sp, sp, 16
+
         ret
 /* END:change_steps */
 
@@ -620,6 +635,12 @@ update_state:
         la t0, CURR_STATE
         li t1, RUN
         sw t1, 0(t0)
+
+        # Unpause the game
+        call pause_game
+
+
+        j update_state_end
 
         update_state_init_JC:
             # Check if the JC button is pressed
@@ -1175,6 +1196,7 @@ get_input:
         lw s1, 8(sp)
         lw s0, 4(sp)
         lw ra, 0(sp)
+        addi sp, sp, 12
 
         ret
 /* END:get_input */
@@ -1266,8 +1288,16 @@ decrement_step:
         sw s4, 0(s2)
 
         li a0, 0
+        j decrement_step_end
 
     decrement_step_run:
+        # Check if game is paused
+        la t0, PAUSE
+        lw t0, 0(t0)
+        li t1, PAUSED
+        beq t0, t1, decrement_step_end
+
+        # Check if the current number of steps is 0, if so, return 1
         la t0, CURR_STEP
         lw t0, 0(t0)
         bnez t0, decrement_step_decrement
@@ -1302,9 +1332,16 @@ reset_game:
     addi sp, sp, -4
     sw ra, 0(sp)
 
+    call clear_leds
+
+    # Set the game to PAUSED
+    li t0, PAUSED
+    la t1, PAUSE
+    sw t0, 0(t1)
+
     # Set current steps to 1 and display it
     la t0, CURR_STEP
-    la t1, 2
+    la t1, 1
     sw t1, 0(t0)
     call decrement_step
 
@@ -1312,24 +1349,24 @@ reset_game:
     la t0, GSA_ID
     sw zero, 0(t0)
 
+    # Set seed id to 0
+    la t0, SEED
+    sw zero, 0(t0)
+
     # select seed 0
     la a0, 0
     call set_seed
-    # Should we mask here ?
+    call mask
     call draw_gsa
-
-    # Set the game to PAUSED
-    li t0, PAUSED
-    la t1, PAUSE
-    sw t0, 0(t1)
 
     # Set the game speed to MIN_SPEED
     li t0, MIN_SPEED
     la t1, SPEED
     sw t0, 0(t1)
 
-    addi sp, sp, 4
     lw ra, 0(sp)
+    addi sp, sp, 4
+    
 
     ret
 /* END:reset_game */
