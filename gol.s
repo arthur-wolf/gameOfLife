@@ -698,154 +698,122 @@ update_state:
 
 /* BEGIN:select_action */
 select_action:
-    addi sp, sp, -12
+    addi sp, sp, -36
     sw ra, 0(sp)
     sw s0, 4(sp)
     sw s1, 8(sp)
+    sw s2, 12(sp)
+    sw s3, 16(sp)
+    sw s4, 20(sp)
+    sw s5, 24(sp)
+    sw s6, 28(sp)
+    sw s7, 32(sp)
 
-    # Load the current game state
-    la s0, CURR_STATE
-    lw s0, 0(s0)
+    mv s0, a0   # Move the current button state to s0
 
-    # Move the button state to s1
-    mv s1, a0
+    # Save the buttons states in registers
+    and s1, s0, JC
+    and s2, s0, JR
+    and s3, s0, JL
+    and s4, s0, JT
+    and s5, s0, BUTTON_0
+    and s6, s0, BUTTON_1
+    and s7, s0, BUTTON_2
 
-    # Check the current game state
-    li t0, RAND
-    beq s0, t0, select_action_rand
+    la t0, CURR_STATE
+    lw t0, 0(t0)
 
-    li t0, RUN
-    beq s0, t0, select_action_run
+    # Current state is RAND
+    la t1, RAND
+    beq t0, t1, select_action_rand
 
-    # If the game state is neither RAND nor RUN, it is INIT
+    # Current state is RUN
+    la t1, RUN
+    beq t0, t1, select_action_run
+
+    # Current state is INIT
     select_action_init:
-        # Check JC button
-        li t0, JC
-        and t1, s1, t0
-        beqz t1, select_action_init_digit  # If JC is not pressed, check digit buttons
+        # Check if the JC button is pressed
+        bnez s1, select_action_init_JC
 
-        call increment_seed
+        # Check if one of the digit buttons is pressed
+        add t1, s5, s6
+        add t1, t1, s7
+        bnez t1, select_action_digit
+
+        # Else, go to the end
         j select_action_end
 
-        select_action_init_digit:
-            # Check digit buttons
-            li t0, BUTTON_0
-            li t1, BUTTON_1
-            li t2, BUTTON_2
-            
-            or t0, t0, t1
-            or t0, t0, t2
-
-            and t2, s1, t0
-            beqz t2, select_action_end  # If no digit button is pressed, end
-
-            # Load Button 0 value
-            li t0, BUTTON_0
-            and t0, t0, s1
-            mv a0, t0
-
-            # Load Button 1 value
-            li t0, BUTTON_1
-            and t0, t0, s1
-            mv a1, t0
-
-            # Load Button 2 value
-            li t0, BUTTON_2
-            and t0, t0, s1
-            mv a2, t0
-
-            call change_steps
+        select_action_init_JC:
+            call increment_seed
 
             j select_action_end
 
     select_action_rand:
-        # Check JC button
-        li t0, JC
-        and t1, s1, t0
-        beqz t1, select_action_rand_digit  # If JC is not pressed, check digit buttons
+        # Check if the JC button is pressed
+        bnez s1, select_action_rand_JC
 
-        call increment_seed
+        # Check if one of the digit buttons is pressed
+        add t1, s5, s6
+        add t1, t1, s7
+        bnez t1, select_action_digit
+
+        # Else, go to the end
         j select_action_end
 
-        select_action_rand_digit:
-            # Check digit buttons
-            li t0, BUTTON_0
-            li t1, BUTTON_1
-            li t2, BUTTON_2
-            
-            or t0, t0, t1
-            or t0, t0, t2
-
-            and t2, s1, t0
-            beqz t2, select_action_end  # If no digit button is pressed, end
-
-            # Load Button 0 value
-            li t0, BUTTON_0
-            and t0, t0, s1
-            mv a0, t0
-
-            # Load Button 1 value
-            li t0, BUTTON_1
-            and t0, t0, s1
-            mv a1, t0
-
-            # Load Button 2 value
-            li t0, BUTTON_2
-            and t0, t0, s1
-            mv a2, t0
-
-            call change_speed
+        select_action_rand_JC:
+            call random_gsa
 
             j select_action_end
 
     select_action_run:
-        # Check JR button
-        li t0, JR
-        and t1, s1, t0
-        beqz t1, select_action_run_JL  # If JR is not pressed, check JL button
+        bnez s2, select_action_run_JR
+        bnez s3, select_action_run_JL
+        bnez s4, select_action_run_JT
+        bnez s1, select_action_run_JC
 
-        # Increase the speed
-        li a0, 0
-        call change_speed
-
+        # Else, go to the end
         j select_action_end
 
-        select_action_run_JL:
-            # Check JL button
-            li t0, JL
-            and t1, s1, t0
-            beqz t1, select_action_run_JC  # If JL is not pressed, check JC button
+        select_action_run_JR:
+            li a0, 0
+            call change_speed
 
-            # Decrease the speed
+            j select_action_end
+        select_action_run_JL:
             li a0, 1
             call change_speed
 
             j select_action_end
-
         select_action_run_JC:
-            # Check JC button
-            li t0, JC
-            and t1, s1, t0
-            beqz t1, select_action_run_JT  # If JC is not pressed, check JT button
-
             call pause_game
+
             j select_action_end
-
         select_action_run_JT:
-            # Check JT button
-            li t0, JT
-            and t1, s1, t0
-            beqz t1, select_action_end  # If JT is not pressed, end
-
-            # Regenerate a random seed
             call random_gsa
 
+            j select_action_end
+    select_action_digit:
+        li t0, 0
+
+        # Set the correct digit
+        slt a0, t0, s5
+        slt a1, t0, s6
+        slt a2, t0, s7
+        call change_steps
+
+
     select_action_end:
-        # Stack teardown
+        lw s7, 32(sp)
+        lw s6, 28(sp)
+        lw s5, 24(sp)
+        lw s4, 20(sp)
+        lw s3, 16(sp)
+        lw s2, 12(sp)
         lw s1, 8(sp)
         lw s0, 4(sp)
         lw ra, 0(sp)
-        addi sp, sp, 12
+        addi sp, sp, 36
 
         ret
 /* END:select_action */
