@@ -65,7 +65,7 @@ main:
         mv s0, a0
         call mask
         call draw_gsa
-        # call wait
+        #call wait
         call decrement_step
         mv s1, a0
         call get_input
@@ -74,6 +74,7 @@ main:
         beqz s1, main_loop  # if a0 == 0, go to main_loop
 
     j main
+
 /* BEGIN:clear_leds */
 clear_leds:
     addi sp, sp, -12
@@ -445,6 +446,8 @@ change_speed_end:
     addi sp, sp, 16
 
     ret
+/* END:change_speed */
+
 /* BEGIN:pause_game */
 pause_game:
     addi sp, sp, -12
@@ -637,8 +640,9 @@ update_state:
         sw t1, 0(t0)
 
         # Unpause the game
-        call pause_game
-
+        la t0, PAUSE
+        li t1, RUNNING
+        sw t1, 0(t0)
 
         j update_state_end
 
@@ -1295,6 +1299,9 @@ decrement_step:
         la t0, PAUSE
         lw t0, 0(t0)
         li t1, PAUSED
+
+        li a0, 0
+
         beq t0, t1, decrement_step_end
 
         # Check if the current number of steps is 0, if so, return 1
