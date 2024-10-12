@@ -612,86 +612,112 @@ increment_seed:
 
 /* BEGIN:update_state */
 update_state:
-    addi sp, sp, -12
+    addi sp, sp, -20
     sw ra, 0(sp)
     sw s0, 4(sp)
     sw s1, 8(sp)
+    sw s2, 12(sp)
+    sw s3, 16(sp)
 
-    mv s1, a0      # Move the button state to s1
+    mv s0, a0   # Move the current button state to s0
 
-    la s0, CURR_STATE
-    lw s0, 0(s0)
+    and s1, s0, JC
+    and s2, s0, JR
+    and s3, s0, JB
 
-    li t0, RAND
-    beq s0, t0, update_state_rand
+    la t0, CURR_STATE
+    lw t0, 0(t0)
 
-    li t0, RUN
-    beq s0, t0, update_state_run
+    # Current state is RAND
+    la t1, RAND
+    beq t0, t1, update_state_rand
 
+    # Current state is RUN
+    la t1, RUN
+    beq t0, t1, update_state_run
+
+    # Current state is INIT
     update_state_init:
+        # Check if the JC button is pressed
+        bnez s1, update_state_init_JC
+
         # Check if the JR button is pressed
-        li t0, JR
-        and s1, s1, t0
-        beqz s1, update_state_init_JC   # If the JR button is not pressed, check the JC button
+        bnez s2, update_state_init_JR
 
-        # Set the game state to RUN
-        la t0, CURR_STATE
-        li t1, RUN
-        sw t1, 0(t0)
-
-        # Unpause the game
-        la t0, PAUSE
-        li t1, RUNNING
-        sw t1, 0(t0)
-
+        # Else, go to the end
         j update_state_end
 
         update_state_init_JC:
-            # Check if the JC button is pressed
-            li t0, JC
-            and s1, s1, t0
-            beqz s1, update_state_end  # If the JC button is not pressed, end
-
-            li t0, SEED
+            la t0, SEED
             lw t0, 0(t0)
             li t1, N_SEEDS
-            blt t0, t1, update_state_end  # If the seed is not random, end
 
-            # Set the game state to RAND
-            la t0, CURR_STATE
-            li t1, RAND
+            # If seed < N_SEEDS, do nothing
+            blt t0, t1, update_state_end 
+
+            # Else, if seed == N_SEEDS, go to RAND state
+            li t0, RAND
+            la t1, CURR_STATE
+            sw t0, 0(t1)
+
+            j update_state_end
+
+        update_state_init_JR:
+            # If JR is pressed, go to RUN state and unpause the game
+            li t0, RUN
+            la t1, CURR_STATE
+            sw t0, 0(t1)
+
+            la t0, PAUSE
+            li t1, RUNNING
             sw t1, 0(t0)
+
             j update_state_end
 
     update_state_rand:
         # Check if the JR button is pressed
-        li t0, JR
-        and s1, s1, t0
-        beqz s1, update_state_end  # If the JR button is not pressed, end
+        bnez s2, update_state_rand_JR
 
-        # Set the game state to RUN
-        la t0, CURR_STATE
-        li t1, RUN
-        sw t1, 0(t0)
+        # Else go to the end
         j update_state_end
+
+        update_state_rand_JR:
+            # If JR is pressed, go to RUN state and unpause the game
+            li t0, RUN
+            la t1, CURR_STATE
+            sw t0, 0(t1)
+
+            la t0, PAUSE
+            li t1, RUNNING
+            sw t1, 0(t0)
+
+            j update_state_end
 
     update_state_run:
         # Check if the JB button is pressed
-        li t0, JB
-        and s1, s1, t0
-        beqz s1, update_state_end  # If the JB button is not pressed, end
+        bnez s3, update_state_run_JB
 
-        # Set the game state to INIT
-        la t0, CURR_STATE
-        li t1, INIT
-        sw t1, 0(t0)
-        call reset_game
+        # Else go to the end
+        j update_state_end
 
+        update_state_run_JB:
+            # If JB is pressed, go to INIT state and pause the game
+            li t0, INIT
+            la t1, CURR_STATE
+            sw t0, 0(t1)
+
+            la t0, PAUSE
+            li t1, PAUSED
+            sw t1, 0(t0)
+
+            j update_state_end
     update_state_end:
+        lw s3, 16(sp)
+        lw s2, 12(sp)
         lw s1, 8(sp)
         lw s0, 4(sp)
         lw ra, 0(sp)
-        addi sp, sp, 12
+        addi sp, sp, 20
 
         ret
 /* END:update_state */
