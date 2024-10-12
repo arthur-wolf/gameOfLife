@@ -65,7 +65,7 @@ main:
         mv s0, a0
         call mask
         call draw_gsa
-        #call wait
+        call wait
         call decrement_step
         mv s1, a0
         call get_input
@@ -710,6 +710,8 @@ update_state:
             li t1, PAUSED
             sw t1, 0(t0)
 
+            call reset_game
+
             j update_state_end
     update_state_end:
         lw s3, 16(sp)
@@ -1201,129 +1203,106 @@ get_input:
 
 /* BEGIN:decrement_step */
 decrement_step:
-    addi sp, sp, -28
+    addi sp, sp, -16
     sw ra, 0(sp)
     sw s0, 4(sp)
     sw s1, 8(sp)
     sw s2, 12(sp)
-    sw s3, 16(sp)
-    sw s4, 20(sp)
-    sw s5, 24(sp)
 
-    li t0, RUN
-    la s0, CURR_STATE
-    lw s0, 0(s0)
+    # If current state is RUN, decrement the step
+    la t0, CURR_STATE
+    lw t0, 0(t0)
+    li t1, RUN
+    beq t0, t1, decrement_step_run
 
-    beq s0, t0, decrement_step_run
-
-    decrement_step_display:
-    # Display the current number of steps and return 0
-        la t0, CURR_STEP
-        lw s0, 0(t0)    # s0 is the current number of steps
-
-        la s1, font_data
-        la s2, SEVEN_SEGS
-
-        # -------- Display the digits --------
-
-        # Extract the thousands digit
-        li t0, 0              # t0 = thousands digit (initialize to 0)
-        li t4, 1000           # t4 = 1000
-        thousands_loop:
-            blt s0, t4, hundreds_loop  # If s0 < 1000, go to hundreds extraction
-            sub s0, s0, t4        # Subtract 1000 from s0
-            addi t0, t0, 1        # Increment the thousands digit
-            j thousands_loop
-
-            # Extract the hundreds digit
-        hundreds_loop:
-            li t1, 0              # t1 = hundreds digit (initialize to 0)
-            li t4, 100            # t4 = 100
-        hundreds_loop_start:
-            blt s0, t4, tens_loop # If s0 < 100, go to tens extraction
-            sub s0, s0, t4        # Subtract 100 from s0
-            addi t1, t1, 1        # Increment the hundreds digit
-            j hundreds_loop_start
-
-            # Extract the tens digit
-        tens_loop:
-            li t2, 0              # t2 = tens digit (initialize to 0)
-            li t4, 10             # t4 = 10
-        tens_loop_start:
-            blt s0, t4, units_loop # If s0 < 10, go to units extraction
-            sub s0, s0, t4        # Subtract 10 from s0
-            addi t2, t2, 1        # Increment the tens digit
-            j tens_loop_start
-
-            # Extract the units digit
-        units_loop:
-            mv t3, s0             # The remaining value in s0 is the units digit
-        
-        # Offset the font data
-        slli t0, t0, 2
-        slli t1, t1, 2
-        slli t2, t2, 2
-        slli t3, t3, 2
-
-        add t4, s1, t0  # s4 = thousands font data address
-        lw s4, 0(t4)
-        slli s4, s4, 24
-
-        add t4, s1, t1  # s4 = hundreds font data address
-        lw s5, 0(t4)
-        slli s5, s5, 16
-        or s4, s4, s5
-
-        add t4, s1, t2  # s4 = tens font data address
-        lw s5, 0(t4)
-        slli s5, s5, 8
-        or s4, s4, s5
-
-        add t4, s1, t3  # s4 = units font data address
-        lw s5, 0(t4)
-        or s4, s4, s5
-
-        sw s4, 0(s2)
-
-        li a0, 0
-        j decrement_step_end
+    # Else, display the current step
+    j decrement_step_display
 
     decrement_step_run:
-        # Check if game is paused
+        # If the game is paused, just display the current step
         la t0, PAUSE
         lw t0, 0(t0)
         li t1, PAUSED
+        beq t0, t1, decrement_step_display
 
-        li a0, 0
-
-        beq t0, t1, decrement_step_end
-
-        # Check if the current number of steps is 0, if so, return 1
-        la t0, CURR_STEP
-        lw t0, 0(t0)
-        bnez t0, decrement_step_decrement
-
-        li a0, 1
-        j decrement_step_end
-
-    decrement_step_decrement:
+        # Check if the current step is 0, if so return 1
         la t0, CURR_STEP
         lw t1, 0(t0)
+        li a0, 1
+        beqz t1, decrement_step_end
 
+        # Else decrement the current step and display it
         addi t1, t1, -1
         sw t1, 0(t0)
 
         j decrement_step_display
+    
+    decrement_step_display:
+        # return 0
+        li a0, 0
+
+        # Load the current step
+        la t0, CURR_STEP
+        lw s0, 0(t0)    # s0 is the current number of steps
+
+        # Load the font data address
+        la s2, font_data
+
+        li t0, 0xF  # 7-segment display mask
+
+        # -------- Extract the digits --------
+        extract_third_digit:
+            srl t1, s0, 12
+            and t1, t1, t0
+
+        extract_second_digit:
+            srl t2, s0, 8
+            and t2, t2, t0
+
+        extract_first_digit:
+            srl t3, s0, 4
+            and t3, t3, t0
+    
+        extract_last_digit:
+            and t4, s0, t0
+
+        # Offset the digits
+        slli t1, t1, 2
+        slli t2, t2, 2
+        slli t3, t3, 2
+        slli t4, t4, 2
+
+        # Load each digit's font data
+        add t1, s2, t1
+        lw t1, 0(t1)
+        slli t1, t1, 24
+
+        add t2, s2, t2
+        lw t2, 0(t2)
+        slli t2, t2, 16
+
+        add t3, s2, t3
+        lw t3, 0(t3)
+        slli t3, t3, 8
+
+        add t4, s2, t4
+        lw t4, 0(t4)
+
+        # Combine the digits
+        or t4, t4, t3
+        or t4, t4, t2
+        or t4, t4, t1
+
+        # Display the digits
+        la t1, SEVEN_SEGS
+        sw t4, 0(t1)
 
     decrement_step_end:
-        lw s5, 24(sp)
-        lw s4, 20(sp)
-        lw s3, 16(sp)
         lw s2, 12(sp)
         lw s1, 8(sp)
         lw s0, 4(sp)
         lw ra, 0(sp)
-        addi sp, sp, 28
+        addi sp, sp, 16
 
         ret
 /* END:decrement_step */
